@@ -1,0 +1,343 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    background-color: #ffffff;
+  }
+  
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 355 96% 43%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 220 9% 46%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 355 96% 43%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 355 96% 43%;
+    --radius: 0.625rem;
+    
+    /* SMS Brand Colors */
+    --sms-red: #d90429;
+    --sms-red-light: #ef233c;
+    --sms-black: #000000;
+    --sms-white: #ffffff;
+    --sms-gray: #8d99ae;
+    --sms-dark-gray: #2b2d42;
+    --sms-light-gray: #f8f9fa;
+    
+    /* Animation Easings */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-expo: cubic-bezier(0.7, 0, 0.84, 0);
+    --ease-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-dramatic: cubic-bezier(0.87, 0, 0.13, 1);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 0 0% 100%;
+    --card: 222 47% 8%;
+    --card-foreground: 0 0% 100%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 355 96% 43%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 222 30% 20%;
+    --muted-foreground: 220 9% 60%;
+    --accent: 355 96% 43%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 355 96% 43%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-white text-black antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-8 py-4 bg-[#d90429] text-white font-semibold rounded-lg transition-all duration-300;
+  }
+  
+  .btn-primary:hover {
+    @apply bg-[#ef233c] -translate-y-0.5;
+    box-shadow: 0 10px 30px rgba(217, 4, 41, 0.3);
+  }
+  
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-8 py-4 border-2 border-[#d90429] text-[#d90429] font-semibold rounded-lg transition-all duration-300;
+  }
+  
+  .btn-secondary:hover {
+    @apply bg-[#d90429] text-white;
+  }
+  
+  .section-label {
+    @apply text-sm font-semibold tracking-widest uppercase text-[#d90429];
+  }
+  
+  .section-title {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold text-black leading-tight;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-500;
+  }
+  
+  .card-hover:hover {
+    @apply -translate-y-2.5;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  }
+  
+  .text-gradient {
+    background: linear-gradient(135deg, #d90429 0%, #ef233c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .glass-effect {
+    backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .red-glow {
+    box-shadow: 0 0 30px rgba(217, 4, 41, 0.3);
+  }
+}
+
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+  
+  .animate-gradient-shift {
+    animation: gradientShift 8s ease infinite;
+    background-size: 200% 200%;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.6s var(--ease-out-expo) forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.6s var(--ease-out-expo) forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.5s var(--ease-elastic) forwards;
+  }
+
+  /* Line clamp utilities */
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(217, 4, 41, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(217, 4, 41, 0.6); }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Prose styles for article content */
+.prose {
+  @apply text-gray-700;
+}
+
+.dark .prose {
+  @apply text-gray-300;
+}
+
+.prose p {
+  @apply mb-4 leading-relaxed;
+}
+
+.prose h2 {
+  @apply text-2xl font-bold text-gray-900 mt-8 mb-4;
+}
+
+.dark .prose h2 {
+  @apply text-white;
+}
+
+.prose h3 {
+  @apply text-xl font-bold text-gray-900 mt-6 mb-3;
+}
+
+.dark .prose h3 {
+  @apply text-white;
+}
+
+.prose strong {
+  @apply font-semibold text-gray-900;
+}
+
+.dark .prose strong {
+  @apply text-white;
+}
+
+.prose em {
+  @apply italic;
+}
+
+.prose ul {
+  @apply list-disc pl-6 mb-4 space-y-2;
+}
+
+.prose ol {
+  @apply list-decimal pl-6 mb-4 space-y-2;
+}
+
+.prose a {
+  @apply text-[#d90429] hover:underline;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-[#d90429] pl-4 italic text-gray-600 my-6;
+}
+
+.dark .prose blockquote {
+  @apply text-gray-400;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+.dark ::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-gray-600;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
