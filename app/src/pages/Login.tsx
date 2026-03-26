@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { getGoogleClientId } from '@/lib/google-auth';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -10,9 +11,11 @@ export function Login() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const isGoogleConfigured = !!getGoogleClientId();
 
   const validateForm = () => {
     const nextErrors: { email?: string; password?: string } = {};
@@ -54,6 +57,24 @@ export function Login() {
       setError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    setIsGoogleLoading(true);
+
+    try {
+      const loggedInUser = await loginWithGoogle();
+      if (loggedInUser) {
+        navigate(loggedInUser.role === 'participant' ? '/' : '/admin');
+      } else {
+        setError('Login Google gagal. Pastikan email Google Anda sudah terverifikasi.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login Google gagal.');
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -103,7 +124,7 @@ export function Login() {
                     }
                   }}
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
-                  placeholder="admin@sinergimudastrategis.com"
+                  placeholder="nama@email.com"
                 />
               </div>
               {fieldErrors.email && <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>}
@@ -150,6 +171,33 @@ export function Login() {
             {isLoading ? 'Memuat...' : 'Login'}
           </button>
 
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-gray-50 px-3 text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+                atau
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={!isGoogleConfigured || isGoogleLoading}
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            <span className="text-base font-bold text-[#4285F4]">G</span>
+            {isGoogleLoading ? 'Menghubungkan Google...' : 'Masuk dengan Google'}
+          </button>
+
+          {!isGoogleConfigured && (
+            <p className="text-center text-xs text-amber-600 dark:text-amber-400">
+              Atur `VITE_GOOGLE_CLIENT_ID` agar login Google aktif.
+            </p>
+          )}
+
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Belum punya akun?{' '}
@@ -160,7 +208,7 @@ export function Login() {
           </div>
 
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
-            <p className="font-medium text-blue-800 dark:text-blue-400 mb-2">Akun admin demo:</p>
+            <p className="font-medium text-blue-800 dark:text-blue-400 mb-2">Akun editor demo:</p>
             <p className="text-blue-700 dark:text-blue-300">Email: admin@sinergimudastrategis.com</p>
             <p className="text-blue-700 dark:text-blue-300">Password: admin123</p>
           </div>

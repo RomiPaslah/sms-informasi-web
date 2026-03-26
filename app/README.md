@@ -71,3 +71,13 @@ export default defineConfig([
   },
 ])
 ```
+
+## Google Login
+
+Untuk mengaktifkan login Google di aplikasi ini, tambahkan file `.env` di folder `app` dengan isi:
+
+```env
+VITE_GOOGLE_CLIENT_ID=your-google-oauth-client-id.apps.googleusercontent.com
+```
+
+Gunakan client ID dari Google Cloud Console untuk tipe Web application, lalu daftarkan origin aplikasi Anda seperti `http://localhost:5173` atau domain produksi yang dipakai.

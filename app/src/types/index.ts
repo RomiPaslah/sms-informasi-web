@@ -19,6 +19,8 @@ export interface User {
   email: string;
   role: 'admin' | 'editor' | 'participant';
   createdAt: string;
+  authProvider?: 'local' | 'google';
+  avatar?: string;
 }
 
 export interface NewsFormData {
@@ -46,6 +48,15 @@ export interface ActivityMediaItem {
   src: string;
 }
 
+export interface ContactItem {
+  id: string;
+  title: string;
+  icon: string;
+  value: string;
+  link: string;
+  highlight?: boolean;
+}
+
 export interface HomeContent {
   aboutBadge: string;
   aboutTitle: string;
@@ -55,4 +66,8 @@ export interface HomeContent {
   activitiesTitle: string;
   activitiesDescription: string;
   activitiesMedia: ActivityMediaItem[];
+  contactBadge: string;
+  contactTitle: string;
+  contactDescription: string;
+  contacts: ContactItem[];
 }

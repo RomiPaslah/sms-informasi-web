@@ -31,13 +31,24 @@ export function Navbar() {
     { name: 'Kontak', href: '/#contact' },
   ];
 
-  const scrollToSection = (href: string) => {
-    if (href.startsWith('/#')) {
-      const element = document.querySelector(href.substring(1));
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
+  const navigateToLink = (href: string) => {
+    if (!href.startsWith('/#')) {
+      navigate(href);
+      setIsMobileMenuOpen(false);
+      return;
     }
+
+    const hash = href.replace('/', '');
+
+    if (location.pathname === '/') {
+      const element = document.querySelector(hash);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } else {
+      navigate(`/${hash}`);
+    }
+
     setIsMobileMenuOpen(false);
   };
 
@@ -70,7 +81,7 @@ export function Navbar() {
                 onClick={(e) => {
                   if (link.href.startsWith('/#')) {
                     e.preventDefault();
-                    scrollToSection(link.href);
+                    navigateToLink(link.href);
                   }
                 }}
                 className={`relative text-sm font-medium transition-colors duration-300 group ${isDark ? 'text-gray-700 dark:text-gray-300 hover:text-[#d90429]' : 'text-white/90 hover:text-white'}`}
@@ -135,7 +146,7 @@ export function Navbar() {
                 onClick={(e) => {
                   if (link.href.startsWith('/#')) {
                     e.preventDefault();
-                    scrollToSection(link.href);
+                    navigateToLink(link.href);
                   } else {
                     setIsMobileMenuOpen(false);
                   }

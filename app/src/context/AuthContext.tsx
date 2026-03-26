@@ -7,6 +7,7 @@ interface AuthContextType {
   isLoading: boolean;
   canAccessAdmin: boolean;
   login: (email: string, password: string) => Promise<User | null>;
+  loginWithGoogle: () => Promise<User | null>;
   register: (name: string, email: string, password: string) => Promise<User | null>;
   logout: () => void;
 }
@@ -16,13 +17,57 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const STORAGE_KEY = 'sms_auth';
 const USERS_KEY = 'sms_users';
 
-const DEFAULT_ADMIN = {
-  id: 'admin-1',
-  name: 'Administrator',
-  email: 'admin@sinergimudastrategis.com',
+const PRIMARY_ADMIN = {
+  id: 'admin-utama-1',
+  name: 'Admin Utama',
+  email: 'romipaslah027@gmail.com',
   password: 'admin123',
   role: 'admin' as const,
   createdAt: new Date().toISOString(),
+  isPrimaryAdmin: true,
+  authProvider: 'local',
+};
+
+const DEMO_EDITOR = {
+  id: 'editor-demo-1',
+  name: 'Admin Demo',
+  email: 'admin@sinergimudastrategis.com',
+  password: 'admin123',
+  role: 'editor' as const,
+  createdAt: new Date().toISOString(),
+  authProvider: 'local',
+};
+
+const sanitizeUser = (rawUser: any): User => {
+  const { password: _password, ...userWithoutPassword } = rawUser;
+  return userWithoutPassword;
+};
+
+const ensureDefaultUsers = (rawUsers: unknown) => {
+  const users = Array.isArray(rawUsers) ? [...rawUsers] : [];
+
+  const hasPrimaryAdmin = users.some(
+    (item: any) => item?.email?.toLowerCase?.() === PRIMARY_ADMIN.email.toLowerCase()
+  );
+  const hasDemoEditor = users.some(
+    (item: any) => item?.email?.toLowerCase?.() === DEMO_EDITOR.email.toLowerCase()
+  );
+
+  if (!hasPrimaryAdmin) {
+    users.unshift(PRIMARY_ADMIN);
+  }
+
+  if (!hasDemoEditor) {
+    users.push(DEMO_EDITOR);
+  } else {
+    return users.map((item: any) =>
+      item?.email?.toLowerCase?.() === DEMO_EDITOR.email.toLowerCase()
+        ? { ...item, role: 'editor' }
+        : item
+    );
+  }
+
+  return users;
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -30,10 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    if (users.length === 0) {
-      localStorage.setItem(USERS_KEY, JSON.stringify([DEFAULT_ADMIN]));
-    }
+    const users = ensureDefaultUsers(JSON.parse(localStorage.getItem(USERS_KEY) || '[]'));
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -58,10 +101,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
-    const { password: _password, ...userWithoutPassword } = foundUser;
+    const userWithoutPassword = sanitizeUser(foundUser);
     setUser(userWithoutPassword);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: userWithoutPassword }));
     return userWithoutPassword;
+  };
+
+  const loginWithGoogle = async (): Promise<User | null> => {
+    const { requestGoogleCredential } = await import('@/lib/google-auth');
+    const profile = await requestGoogleCredential();
+
+    if (!profile.email_verified) {
+      return null;
+    }
+
+    const users = ensureDefaultUsers(JSON.parse(localStorage.getItem(USERS_KEY) || '[]'));
+    const normalizedEmail = profile.email.trim().toLowerCase();
+    const existingUser = users.find(
+      (item: any) => item.email.toLowerCase() === normalizedEmail
+    );
+
+    let sessionUser: User;
+
+    if (existingUser) {
+      sessionUser = sanitizeUser(existingUser);
+    } else {
+      const newGoogleUser = {
+        id: `google-${profile.sub}`,
+        name: profile.name?.trim() || normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        role: 'participant' as const,
+        createdAt: new Date().toISOString(),
+        authProvider: 'google',
+        avatar: profile.picture,
+      };
+
+      users.push(newGoogleUser);
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      sessionUser = sanitizeUser(newGoogleUser);
+    }
+
+    setUser(sessionUser);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: sessionUser }));
+    return sessionUser;
   };
 
   const register = async (name: string, email: string, password: string): Promise<User | null> => {
@@ -79,12 +161,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       role: 'participant' as const,
       createdAt: new Date().toISOString(),
+      authProvider: 'local' as const,
     };
 
     users.push(newUser);
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
-    const { password: _password, ...userWithoutPassword } = newUser;
+    const userWithoutPassword = sanitizeUser(newUser);
     setUser(userWithoutPassword);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: userWithoutPassword }));
     return userWithoutPassword;
@@ -103,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         canAccessAdmin: user?.role === 'admin' || user?.role === 'editor',
         login,
+        loginWithGoogle,
         register,
         logout,
       }}

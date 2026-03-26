@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { getGoogleClientId } from '@/lib/google-auth';
 
 export function Register() {
   const [name, setName] = useState('');
@@ -12,9 +13,11 @@ export function Register() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const isGoogleConfigured = !!getGoogleClientId();
 
   const validateForm = () => {
     const nextErrors: Record<string, string> = {};
@@ -68,6 +71,24 @@ export function Register() {
       setError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleRegister = async () => {
+    setError('');
+    setIsGoogleLoading(true);
+
+    try {
+      const registeredUser = await loginWithGoogle();
+      if (registeredUser) {
+        navigate('/');
+      } else {
+        setError('Masuk dengan Google gagal. Pastikan email Google Anda terverifikasi.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Masuk dengan Google gagal.');
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -215,6 +236,33 @@ export function Register() {
           >
             {isLoading ? 'Mendaftar...' : 'Daftar'}
           </button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-gray-50 px-3 text-gray-500 dark:bg-gray-900 dark:text-gray-400">
+                atau
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleRegister}
+            disabled={!isGoogleConfigured || isGoogleLoading}
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            <span className="text-base font-bold text-[#4285F4]">G</span>
+            {isGoogleLoading ? 'Menghubungkan Google...' : 'Daftar dengan Google'}
+          </button>
+
+          {!isGoogleConfigured && (
+            <p className="text-center text-xs text-amber-600 dark:text-amber-400">
+              Atur `VITE_GOOGLE_CLIENT_ID` agar Google Sign-In aktif.
+            </p>
+          )}
 
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">

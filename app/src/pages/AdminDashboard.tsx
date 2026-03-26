@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowDown,
   ArrowUp,
@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Monitor,
   Newspaper,
+  Phone,
   Plus,
   Save,
   Search,
@@ -38,6 +39,7 @@ export function AdminDashboard() {
   const { news, deleteNews, deleteComment } = useNews();
   const { homeContent, updateHomeContent } = useSiteContent();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -46,10 +48,38 @@ export function AdminDashboard() {
   const [saveMessage, setSaveMessage] = useState('');
   const [commentQuery, setCommentQuery] = useState('');
   const [mediaUploadMessage, setMediaUploadMessage] = useState('');
+  const focusedMediaId = searchParams.get('media');
 
   useEffect(() => {
     setContentForm(homeContent);
   }, [homeContent]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+
+    if (
+      requestedTab === 'news' ||
+      requestedTab === 'homepage' ||
+      requestedTab === 'comments'
+    ) {
+      setActiveTab(requestedTab);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeTab !== 'homepage' || !focusedMediaId) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      const element = document.getElementById(`media-editor-${focusedMediaId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, focusedMediaId, contentForm.activitiesMedia.length]);
 
   const filteredNews = news.filter((item) =>
     item.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -100,6 +130,18 @@ export function AdminDashboard() {
     setContentForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleContactChange = (
+    id: string,
+    field: 'title' | 'value' | 'link' | 'icon',
+    value: string
+  ) => {
+    setSaveMessage('');
+    setContentForm((prev) => ({
+      ...prev,
+      contacts: prev.contacts.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+    }));
+  };
+
   const handleMediaChange = (
     id: string,
     field: 'title' | 'description' | 'src' | 'type',
@@ -128,6 +170,32 @@ export function AdminDashboard() {
           src: '/images/hero-bg.jpg',
         },
       ],
+    }));
+  };
+
+  const addContactItem = () => {
+    setSaveMessage('');
+    setContentForm((prev) => ({
+      ...prev,
+      contacts: [
+        ...prev.contacts,
+        {
+          id: `contact-${Date.now()}`,
+          title: 'Kontak Baru',
+          icon: '📌',
+          value: 'Isi informasi kontak',
+          link: 'https://example.com',
+          highlight: false,
+        },
+      ],
+    }));
+  };
+
+  const removeContactItem = (id: string) => {
+    setSaveMessage('');
+    setContentForm((prev) => ({
+      ...prev,
+      contacts: prev.contacts.filter((item) => item.id !== id),
     }));
   };
 
@@ -173,6 +241,19 @@ export function AdminDashboard() {
   const handleSaveHomepage = () => {
     updateHomeContent(contentForm);
     setSaveMessage('Konten halaman depan berhasil disimpan.');
+  };
+
+  const switchTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('tab', tab);
+
+    if (tab !== 'homepage') {
+      nextParams.delete('media');
+    }
+
+    setSearchParams(nextParams, { replace: true });
   };
 
   const handleMediaUpload = async (mediaId: string, file: File) => {
@@ -255,13 +336,13 @@ export function AdminDashboard() {
         </div>
 
         <div className="mb-6 flex flex-wrap gap-3">
-          <TabButton active={activeTab === 'news'} onClick={() => setActiveTab('news')} icon={<Newspaper className="h-4 w-4" />}>
+          <TabButton active={activeTab === 'news'} onClick={() => switchTab('news')} icon={<Newspaper className="h-4 w-4" />}>
             Kelola Berita
           </TabButton>
-          <TabButton active={activeTab === 'homepage'} onClick={() => setActiveTab('homepage')} icon={<Settings className="h-4 w-4" />}>
+          <TabButton active={activeTab === 'homepage'} onClick={() => switchTab('homepage')} icon={<Settings className="h-4 w-4" />}>
             Edit Halaman Depan
           </TabButton>
-          <TabButton active={activeTab === 'comments'} onClick={() => setActiveTab('comments')} icon={<MessageSquare className="h-4 w-4" />}>
+          <TabButton active={activeTab === 'comments'} onClick={() => switchTab('comments')} icon={<MessageSquare className="h-4 w-4" />}>
             Kelola Komentar
           </TabButton>
         </div>
@@ -356,7 +437,7 @@ export function AdminDashboard() {
                   <div>
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">Editor Halaman Depan</h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Atur isi menu Tentang Kami dan blok SMS Activities & Dokumentasi.
+                      Atur isi Tentang Kami, SMS Activities & Dokumentasi, serta informasi kontak.
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -475,6 +556,43 @@ export function AdminDashboard() {
                         </button>
                       </div>
                     </div>
+
+                    {focusedMediaId && (
+                      <div className="rounded-2xl border border-[#d90429]/20 bg-[#d90429]/5 px-4 py-3 text-sm text-[#b00020] dark:text-[#ff7b8f]">
+                        Mode edit cepat aktif. Kartu yang dipilih dari beranda akan disorot di daftar media.
+                      </div>
+                    )}
+                  </EditorCard>
+
+                  <EditorCard
+                    title="Informasi Kontak"
+                    description="Edit badge, judul, deskripsi, dan isi kartu kontak di beranda."
+                    icon={<Phone className="h-5 w-5 text-[#d90429]" />}
+                  >
+                    <Field label="Badge Kontak">
+                      <input
+                        type="text"
+                        value={contentForm.contactBadge}
+                        onChange={(e) => handleContentChange('contactBadge', e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                      />
+                    </Field>
+                    <Field label="Judul Kontak">
+                      <input
+                        type="text"
+                        value={contentForm.contactTitle}
+                        onChange={(e) => handleContentChange('contactTitle', e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                      />
+                    </Field>
+                    <Field label="Deskripsi Kontak">
+                      <textarea
+                        rows={4}
+                        value={contentForm.contactDescription}
+                        onChange={(e) => handleContentChange('contactDescription', e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                      />
+                    </Field>
                   </EditorCard>
                 </div>
               </div>
@@ -523,6 +641,19 @@ export function AdminDashboard() {
                     </div>
                   </div>
 
+                  <div className="rounded-2xl bg-white/5 p-5 border border-white/10">
+                    <p className="text-sm font-semibold text-[#ff8fa3]">{contentForm.contactTitle}</p>
+                    <p className="mt-2 text-sm text-white/75">{contentForm.contactDescription}</p>
+                    <div className="mt-4 grid gap-3">
+                      {contentForm.contacts.map((contact) => (
+                        <div key={contact.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          <p className="font-medium">{contact.title}</p>
+                          <p className="mt-1 text-xs text-white/65">{contact.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="rounded-2xl bg-[#d90429]/20 p-4 border border-[#ff4d6d]/30">
                     <p className="text-sm font-semibold">Tips CMS</p>
                     <p className="mt-2 text-sm text-white/75">
@@ -548,7 +679,15 @@ export function AdminDashboard() {
 
               <div className="mt-6 grid gap-4 lg:grid-cols-2">
                 {contentForm.activitiesMedia.map((item, index) => (
-                  <div key={item.id} className="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
+                  <div
+                    id={`media-editor-${item.id}`}
+                    key={item.id}
+                    className={`rounded-2xl border p-4 transition-all dark:border-gray-700 ${
+                      focusedMediaId === item.id
+                        ? 'border-[#d90429] bg-[#d90429]/5 shadow-[0_0_0_1px_rgba(217,4,41,0.15)]'
+                        : 'border-gray-200'
+                    }`}
+                  >
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Media #{index + 1}</p>
@@ -645,6 +784,89 @@ export function AdminDashboard() {
                         message={mediaUploadMessage}
                         onFileSelect={(file) => handleMediaUpload(item.id, file)}
                       />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Kartu Kontak</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Ubah isi setiap kotak kontak yang tampil di halaman depan dan footer.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={addContactItem}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[#d90429] px-4 py-3 text-[#d90429] hover:bg-[#d90429]/10"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Tambah Kontak
+                  </button>
+                  <div className="rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                    {contentForm.contacts.length} item
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-3">
+                {contentForm.contacts.map((contact) => (
+                  <div key={contact.id} className="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
+                    <div className="mb-3 flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => removeContactItem(contact.id)}
+                        className="rounded-lg p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title="Hapus kontak"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="mb-4 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center dark:border-gray-700 dark:bg-gray-900">
+                      <div className="text-4xl">{contact.icon}</div>
+                      <p className="mt-3 font-semibold text-gray-900 dark:text-white">{contact.title}</p>
+                      <p className="mt-1 text-sm text-[#d90429]">{contact.value}</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Field label="Ikon">
+                        <input
+                          type="text"
+                          value={contact.icon}
+                          onChange={(e) => handleContactChange(contact.id, 'icon', e.target.value)}
+                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                        />
+                      </Field>
+                      <Field label="Judul">
+                        <input
+                          type="text"
+                          value={contact.title}
+                          onChange={(e) => handleContactChange(contact.id, 'title', e.target.value)}
+                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                        />
+                      </Field>
+                      <Field label="Informasi">
+                        <input
+                          type="text"
+                          value={contact.value}
+                          onChange={(e) => handleContactChange(contact.id, 'value', e.target.value)}
+                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                        />
+                      </Field>
+                      <Field label="Link Tujuan">
+                        <input
+                          type="text"
+                          value={contact.link}
+                          onChange={(e) => handleContactChange(contact.id, 'link', e.target.value)}
+                          placeholder="https://..., mailto:..., atau https://wa.me/..."
+                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                        />
+                      </Field>
                     </div>
                   </div>
                 ))}

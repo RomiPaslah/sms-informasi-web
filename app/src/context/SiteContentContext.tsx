@@ -44,6 +44,33 @@ const DEFAULT_HOME_CONTENT: HomeContent = {
       src: '/images/krispol-siregar.jpg',
     },
   ],
+  contactBadge: 'Hubungi Kami',
+  contactTitle: 'Kontak Media & Info',
+  contactDescription: 'Kami siap mendengarkan dan berkolaborasi dengan Anda',
+  contacts: [
+    {
+      id: 'contact-whatsapp',
+      title: 'WhatsApp',
+      icon: '💬',
+      value: '0821-1966-7132',
+      link: 'https://wa.me/6282119667132',
+      highlight: true,
+    },
+    {
+      id: 'contact-website',
+      title: 'Website',
+      icon: '🌐',
+      value: 'sinergimudastrategis.com',
+      link: 'https://www.sinergimudastrategis.com/',
+    },
+    {
+      id: 'contact-email',
+      title: 'Email',
+      icon: '✉️',
+      value: 'info@sinergimudastrategis.com',
+      link: 'mailto:info@sinergimudastrategis.com',
+    },
+  ],
 };
 
 export function SiteContentProvider({ children }: { children: ReactNode }) {
@@ -64,6 +91,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
         activitiesMedia: parsed.activitiesMedia?.length
           ? parsed.activitiesMedia
           : DEFAULT_HOME_CONTENT.activitiesMedia,
+        contacts: parsed.contacts?.length ? parsed.contacts : DEFAULT_HOME_CONTENT.contacts,
       });
     } catch {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_HOME_CONTENT));
