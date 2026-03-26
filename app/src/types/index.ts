@@ -9,13 +9,15 @@ export interface News {
   createdAt: string;
   updatedAt: string;
   published: boolean;
+  reactions: Record<string, string>;
+  comments: NewsComment[];
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'editor';
+  role: 'admin' | 'editor' | 'participant';
   createdAt: string;
 }
 
@@ -26,4 +28,31 @@ export interface NewsFormData {
   image: string;
   category: string;
   published: boolean;
+}
+
+export interface NewsComment {
+  id: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface ActivityMediaItem {
+  id: string;
+  type: 'image' | 'video';
+  title: string;
+  description: string;
+  src: string;
+}
+
+export interface HomeContent {
+  aboutBadge: string;
+  aboutTitle: string;
+  aboutDescription: string;
+  aboutQuote: string;
+  aboutQuoteAuthor: string;
+  activitiesTitle: string;
+  activitiesDescription: string;
+  activitiesMedia: ActivityMediaItem[];
 }

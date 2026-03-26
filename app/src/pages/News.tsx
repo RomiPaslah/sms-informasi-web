@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Search, Filter, Calendar, User, Newspaper } from 'lucide-react';
+import { ArrowLeft, Calendar, Filter, Newspaper, Search, User } from 'lucide-react';
 import { useNews } from '@/context/NewsContext';
+import { NewsEngagement } from '@/components/news/NewsEngagement';
 import type { News } from '@/types';
 
 export function News() {
@@ -29,19 +30,16 @@ export function News() {
     return () => observer.disconnect();
   }, []);
 
-  // Get categories
-  const categories = ['all', ...Array.from(new Set(publishedNews.map((n) => n.category)))];
+  const categories = ['all', ...Array.from(new Set(publishedNews.map((item) => item.category)))];
 
-  // Filter news
   let filteredNews = publishedNews;
   if (searchQuery) {
     filteredNews = searchNews(searchQuery);
   }
   if (selectedCategory !== 'all') {
-    filteredNews = filteredNews.filter((n) => n.category === selectedCategory);
+    filteredNews = filteredNews.filter((item) => item.category === selectedCategory);
   }
 
-  // Get featured news (latest)
   const featuredNews = filteredNews[0];
   const regularNews = filteredNews.slice(1);
 
@@ -56,7 +54,6 @@ export function News() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero Section */}
       <section className="bg-gradient-to-br from-[#d90429] to-[#ef233c] py-16 lg:py-24">
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-20 text-center">
           <div className={`transition-all duration-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
@@ -64,9 +61,7 @@ export function News() {
               <Newspaper className="w-5 h-5 text-white" />
               <span className="text-white text-sm font-medium">Portal Berita Independen</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
-              Berita Terkini SMS
-            </h1>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">Berita Terkini SMS</h1>
             <p className="text-white/80 max-w-2xl mx-auto">
               Informasi akurat, tajam, dan edukatif dari Sinergi Muda Strategis untuk masyarakat Majalengka dan sekitarnya.
             </p>
@@ -75,16 +70,11 @@ export function News() {
       </section>
 
       <main ref={sectionRef} className="w-full px-4 sm:px-6 lg:px-12 xl:px-20 py-12">
-        {/* Back Button */}
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-[#d90429] transition-colors mb-8"
-        >
+        <Link to="/" className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-[#d90429] transition-colors mb-8">
           <ArrowLeft className="w-5 h-5" />
           Kembali ke Beranda
         </Link>
 
-        {/* Search and Filter */}
         <div className="flex flex-col sm:flex-row gap-4 mb-12">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -104,38 +94,29 @@ export function News() {
               className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all appearance-none cursor-pointer"
             >
               <option value="all">Semua Kategori</option>
-              {categories.filter(c => c !== 'all').map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+              {categories.filter((item) => item !== 'all').map((item) => (
+                <option key={item} value={item}>{item}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Featured News */}
         {featuredNews && !searchQuery && selectedCategory === 'all' && (
           <div className="mb-12">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Berita Utama</h2>
             <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl">
               <div className="grid lg:grid-cols-2">
                 <div className="relative h-64 lg:h-auto">
-                  <img
-                    src={featuredNews.image || '/images/hero-bg.jpg'}
-                    alt={featuredNews.title}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={featuredNews.image || '/images/hero-bg.jpg'} alt={featuredNews.title} className="w-full h-full object-cover" />
                 </div>
                 <div className="p-8 lg:p-12 flex flex-col justify-center">
                   <span className="inline-block w-fit px-3 py-1 bg-[#d90429]/10 dark:bg-[#d90429]/20 text-[#d90429] text-xs font-semibold rounded-full mb-4">
                     {featuredNews.category}
                   </span>
                   <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-4 hover:text-[#d90429] transition-colors">
-                    <Link to={`/berita/${featuredNews.id}`}>
-                      {featuredNews.title}
-                    </Link>
+                    <Link to={`/berita/${featuredNews.id}`}>{featuredNews.title}</Link>
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-6 line-clamp-3">
-                    {featuredNews.excerpt}
-                  </p>
+                  <p className="text-gray-600 dark:text-gray-300 mb-6 line-clamp-3">{featuredNews.excerpt}</p>
                   <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
                     <span className="flex items-center gap-1">
                       <User className="w-4 h-4" />
@@ -146,12 +127,10 @@ export function News() {
                       {formatDate(featuredNews.createdAt)}
                     </span>
                   </div>
-                  <Link
-                    to={`/berita/${featuredNews.id}`}
-                    className="inline-flex items-center gap-2 text-[#d90429] font-medium hover:gap-3 transition-all"
-                  >
+                  <NewsEngagement news={featuredNews} />
+                  <Link to={`/berita/${featuredNews.id}`} className="mt-6 inline-flex items-center gap-2 text-[#d90429] font-medium hover:gap-3 transition-all">
                     Baca Selengkapnya
-                    <span>→</span>
+                    <span>{'->'}</span>
                   </Link>
                 </div>
               </div>
@@ -159,28 +138,24 @@ export function News() {
           </div>
         )}
 
-        {/* All News */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
             {searchQuery || selectedCategory !== 'all' ? 'Hasil Pencarian' : 'Semua Berita'}
           </h2>
-          
+
           {regularNews.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {regularNews.map((news) => (
-                <NewsItem key={news.id} news={news} />
+              {regularNews.map((item) => (
+                <NewsItem key={item.id} news={item} />
               ))}
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400">
-                Tidak ada berita yang sesuai dengan pencarian Anda.
-              </p>
+              <p className="text-gray-500 dark:text-gray-400">Tidak ada berita yang sesuai dengan pencarian Anda.</p>
             </div>
           )}
         </div>
 
-        {/* Results count */}
         <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-8">
           Menampilkan {filteredNews.length} berita
         </div>
@@ -189,7 +164,6 @@ export function News() {
   );
 }
 
-// News Item Component
 function NewsItem({ news }: { news: News }) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -203,26 +177,16 @@ function NewsItem({ news }: { news: News }) {
   return (
     <article className="group bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
       <div className="relative h-48 overflow-hidden">
-        <img
-          src={news.image || '/images/hero-bg.jpg'}
-          alt={news.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
+        <img src={news.image || '/images/hero-bg.jpg'} alt={news.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
         <div className="absolute top-4 left-4">
-          <span className="px-3 py-1 bg-[#d90429] text-white text-xs font-semibold rounded-full">
-            {news.category}
-          </span>
+          <span className="px-3 py-1 bg-[#d90429] text-white text-xs font-semibold rounded-full">{news.category}</span>
         </div>
       </div>
       <div className="p-6">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-[#d90429] transition-colors">
-          <Link to={`/berita/${news.id}`}>
-            {news.title}
-          </Link>
+          <Link to={`/berita/${news.id}`}>{news.title}</Link>
         </h3>
-        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
-          {news.excerpt}
-        </p>
+        <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">{news.excerpt}</p>
         <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mb-4">
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
@@ -233,12 +197,10 @@ function NewsItem({ news }: { news: News }) {
             {news.author}
           </span>
         </div>
-        <Link
-          to={`/berita/${news.id}`}
-          className="inline-flex items-center gap-2 text-[#d90429] font-medium text-sm hover:gap-3 transition-all"
-        >
+        <NewsEngagement news={news} />
+        <Link to={`/berita/${news.id}`} className="mt-4 inline-flex items-center gap-2 text-[#d90429] font-medium text-sm hover:gap-3 transition-all">
           Baca Selengkapnya
-          <span>→</span>
+          <span>{'->'}</span>
         </Link>
       </div>
     </article>

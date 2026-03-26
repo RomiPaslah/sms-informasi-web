@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export function Login() {
@@ -8,20 +8,45 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const validateForm = () => {
+    const nextErrors: { email?: string; password?: string } = {};
+
+    if (!email.trim()) {
+      nextErrors.email = 'Email wajib diisi';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      nextErrors.email = 'Format email belum valid';
+    }
+
+    if (!password) {
+      nextErrors.password = 'Password wajib diisi';
+    } else if (password.length < 6) {
+      nextErrors.password = 'Password minimal 6 karakter';
+    }
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!validateForm()) {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        navigate('/admin');
+      const loggedInUser = await login(email, password);
+      if (loggedInUser) {
+        navigate(loggedInUser.role === 'participant' ? '/' : '/admin');
       } else {
         setError('Email atau password salah');
       }
@@ -35,7 +60,6 @@ export function Login() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        {/* Back Button */}
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-[#d90429] transition-colors"
@@ -44,22 +68,14 @@ export function Login() {
           Kembali ke Beranda
         </Link>
 
-        {/* Logo */}
         <div className="text-center">
-          <img
-            src="/images/sms-logo.png"
-            alt="SMS Logo"
-            className="h-20 w-auto mx-auto"
-          />
-          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
-            Login Admin
-          </h2>
+          <img src="/images/sms-logo.png" alt="SMS Logo" className="h-20 w-auto mx-auto" />
+          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">Login Akun</h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Masuk untuk mengelola konten website
+            Masuk untuk membaca, memberi reaksi, berkomentar, atau mengelola konten sesuai akses akun Anda
           </p>
         </div>
 
-        {/* Form */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
@@ -79,13 +95,18 @@ export function Login() {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (fieldErrors.email) {
+                      setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                    }
+                  }}
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
                   placeholder="admin@sinergimudastrategis.com"
                 />
               </div>
+              {fieldErrors.email && <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>}
             </div>
 
             <div>
@@ -99,11 +120,15 @@ export function Login() {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (fieldErrors.password) {
+                      setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                    }
+                  }}
                   className="w-full pl-12 pr-12 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
-                  placeholder="••••••••"
+                  placeholder="********"
                 />
                 <button
                   type="button"
@@ -113,6 +138,7 @@ export function Login() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {fieldErrors.password && <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>}
             </div>
           </div>
 
@@ -133,17 +159,10 @@ export function Login() {
             </p>
           </div>
 
-          {/* Demo credentials */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
-            <p className="font-medium text-blue-800 dark:text-blue-400 mb-2">
-              Demo Credentials:
-            </p>
-            <p className="text-blue-700 dark:text-blue-300">
-              Email: admin@sinergimudastrategis.com
-            </p>
-            <p className="text-blue-700 dark:text-blue-300">
-              Password: admin123
-            </p>
+            <p className="font-medium text-blue-800 dark:text-blue-400 mb-2">Akun admin demo:</p>
+            <p className="text-blue-700 dark:text-blue-300">Email: admin@sinergimudastrategis.com</p>
+            <p className="text-blue-700 dark:text-blue-300">Password: admin123</p>
           </div>
         </form>
       </div>

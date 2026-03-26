@@ -1,7 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { AuthProvider } from '@/context/AuthContext';
+import React from 'react';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { NewsProvider } from '@/context/NewsContext';
+import { SiteContentProvider } from '@/context/SiteContentContext';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Home } from '@/pages/Home';
@@ -12,10 +14,7 @@ import { Register } from '@/pages/Register';
 import { AdminDashboard } from '@/pages/AdminDashboard';
 import { NewsForm } from '@/pages/NewsForm';
 import { TestPage } from '@/pages/TestPage';
-import { useAuth } from '@/context/AuthContext';
-import React from 'react';
 
-// Error Boundary Component
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error?: Error }
@@ -55,9 +54,8 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// Protected Route Component
 function ProtectedRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, canAccessAdmin } = useAuth();
 
   if (isLoading) {
     return (
@@ -71,10 +69,13 @@ function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
+  if (!canAccessAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
   return <Outlet />;
 }
 
-// Public Layout with Navbar and Footer
 function PublicLayout() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -93,33 +94,30 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <NewsProvider>
-            <Router>
-              <Routes>
-                {/* Test Route */}
-                <Route path="/test" element={<TestPage />} />
-                
-                {/* Public Routes */}
-                <Route element={<PublicLayout />}>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/berita" element={<News />} />
-                  <Route path="/berita/:id" element={<NewsDetail />} />
-                </Route>
+            <SiteContentProvider>
+              <Router>
+                <Routes>
+                  <Route path="/test" element={<TestPage />} />
 
-                {/* Auth Routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
+                  <Route element={<PublicLayout />}>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/berita" element={<News />} />
+                    <Route path="/berita/:id" element={<NewsDetail />} />
+                  </Route>
 
-                {/* Admin Routes */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/berita/baru" element={<NewsForm />} />
-                  <Route path="/admin/berita/edit/:id" element={<NewsForm />} />
-                </Route>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
 
-                {/* 404 Redirect */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Router>
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/berita/baru" element={<NewsForm />} />
+                    <Route path="/admin/berita/edit/:id" element={<NewsForm />} />
+                  </Route>
+
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Router>
+            </SiteContentProvider>
           </NewsProvider>
         </AuthProvider>
       </ThemeProvider>

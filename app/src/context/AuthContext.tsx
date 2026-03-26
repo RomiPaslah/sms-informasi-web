@@ -1,12 +1,13 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  canAccessAdmin: boolean;
+  login: (email: string, password: string) => Promise<User | null>;
+  register: (name: string, email: string, password: string) => Promise<User | null>;
   logout: () => void;
 }
 
@@ -15,7 +16,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const STORAGE_KEY = 'sms_auth';
 const USERS_KEY = 'sms_users';
 
-// Default admin account
 const DEFAULT_ADMIN = {
   id: 'admin-1',
   name: 'Administrator',
@@ -30,13 +30,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize default admin if no users exist
     const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
     if (users.length === 0) {
       localStorage.setItem(USERS_KEY, JSON.stringify([DEFAULT_ADMIN]));
     }
 
-    // Check for existing session
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
@@ -49,44 +47,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    const foundUser = users.find((u: any) => u.email === email && u.password === password);
-    
-    if (foundUser) {
-      const { password, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: userWithoutPassword }));
-      return true;
+    const normalizedEmail = email.trim().toLowerCase();
+    const foundUser = users.find(
+      (item: any) => item.email.toLowerCase() === normalizedEmail && item.password === password
+    );
+
+    if (!foundUser) {
+      return null;
     }
-    return false;
+
+    const { password: _password, ...userWithoutPassword } = foundUser;
+    setUser(userWithoutPassword);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: userWithoutPassword }));
+    return userWithoutPassword;
   };
 
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string): Promise<User | null> => {
     const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    
-    // Check if email already exists
-    if (users.some((u: any) => u.email === email)) {
-      return false;
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (users.some((item: any) => item.email.toLowerCase() === normalizedEmail)) {
+      return null;
     }
 
     const newUser = {
       id: `user-${Date.now()}`,
-      name,
-      email,
+      name: name.trim(),
+      email: normalizedEmail,
       password,
-      role: 'editor' as const,
+      role: 'participant' as const,
       createdAt: new Date().toISOString(),
     };
 
     users.push(newUser);
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    
-    const { password: _, ...userWithoutPassword } = newUser;
+
+    const { password: _password, ...userWithoutPassword } = newUser;
     setUser(userWithoutPassword);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: userWithoutPassword }));
-    
-    return true;
+    return userWithoutPassword;
   };
 
   const logout = () => {
@@ -100,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
+        canAccessAdmin: user?.role === 'admin' || user?.role === 'editor',
         login,
         register,
         logout,

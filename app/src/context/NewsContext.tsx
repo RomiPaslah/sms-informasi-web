@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import type { News, NewsFormData } from '@/types';
+import type { News, NewsComment, NewsFormData } from '@/types';
 
 interface NewsContextType {
   news: News[];
@@ -11,13 +11,15 @@ interface NewsContextType {
   updateNews: (id: string, data: Partial<NewsFormData>) => News | null;
   deleteNews: (id: string) => boolean;
   searchNews: (query: string) => News[];
+  setReaction: (newsId: string, userId: string, emoji: string) => void;
+  addComment: (newsId: string, comment: Omit<NewsComment, 'id' | 'createdAt'>) => boolean;
+  deleteComment: (newsId: string, commentId: string) => boolean;
 }
 
 const NewsContext = createContext<NewsContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'sms_news';
 
-// Sample news data
 const SAMPLE_NEWS: News[] = [
   {
     id: '1',
@@ -32,6 +34,8 @@ const SAMPLE_NEWS: News[] = [
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     published: true,
+    reactions: {},
+    comments: [],
   },
   {
     id: '2',
@@ -46,6 +50,8 @@ const SAMPLE_NEWS: News[] = [
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     published: true,
+    reactions: {},
+    comments: [],
   },
   {
     id: '3',
@@ -60,8 +66,16 @@ const SAMPLE_NEWS: News[] = [
     createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     published: true,
+    reactions: {},
+    comments: [],
   },
 ];
+
+const normalizeNews = (item: News): News => ({
+  ...item,
+  reactions: item.reactions ?? {},
+  comments: item.comments ?? [],
+});
 
 export function NewsProvider({ children }: { children: ReactNode }) {
   const [news, setNews] = useState<News[]>([]);
@@ -72,7 +86,7 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        setNews(JSON.parse(stored));
+        setNews((JSON.parse(stored) as News[]).map(normalizeNews));
       } catch {
         setNews(SAMPLE_NEWS);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(SAMPLE_NEWS));
@@ -89,14 +103,12 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     }
   }, [news, mounted]);
 
-  const publishedNews = news.filter((n) => n.published);
+  const publishedNews = news.filter((item) => item.published);
 
-  const getNewsById = (id: string) => {
-    return news.find((n) => n.id === id);
-  };
+  const getNewsById = (id: string) => news.find((item) => item.id === id);
 
   const getNewsByCategory = (category: string) => {
-    return publishedNews.filter((n) => n.category === category);
+    return publishedNews.filter((item) => item.category === category);
   };
 
   const createNews = (data: NewsFormData, author: string): News => {
@@ -106,6 +118,8 @@ export function NewsProvider({ children }: { children: ReactNode }) {
       author,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      reactions: {},
+      comments: [],
     };
     setNews((prev) => [newNews, ...prev]);
     return newNews;
@@ -114,21 +128,21 @@ export function NewsProvider({ children }: { children: ReactNode }) {
   const updateNews = (id: string, data: Partial<NewsFormData>): News | null => {
     let updated: News | null = null;
     setNews((prev) =>
-      prev.map((n) => {
-        if (n.id === id) {
-          updated = { ...n, ...data, updatedAt: new Date().toISOString() };
+      prev.map((item) => {
+        if (item.id === id) {
+          updated = { ...item, ...data, updatedAt: new Date().toISOString() };
           return updated;
         }
-        return n;
+        return item;
       })
     );
     return updated;
   };
 
   const deleteNews = (id: string): boolean => {
-    const exists = news.some((n) => n.id === id);
+    const exists = news.some((item) => item.id === id);
     if (exists) {
-      setNews((prev) => prev.filter((n) => n.id !== id));
+      setNews((prev) => prev.filter((item) => item.id !== id));
       return true;
     }
     return false;
@@ -137,11 +151,73 @@ export function NewsProvider({ children }: { children: ReactNode }) {
   const searchNews = (query: string): News[] => {
     const lowerQuery = query.toLowerCase();
     return publishedNews.filter(
-      (n) =>
-        n.title.toLowerCase().includes(lowerQuery) ||
-        n.excerpt.toLowerCase().includes(lowerQuery) ||
-        n.content.toLowerCase().includes(lowerQuery)
+      (item) =>
+        item.title.toLowerCase().includes(lowerQuery) ||
+        item.excerpt.toLowerCase().includes(lowerQuery) ||
+        item.content.toLowerCase().includes(lowerQuery)
     );
+  };
+
+  const setReaction = (newsId: string, userId: string, emoji: string) => {
+    setNews((prev) =>
+      prev.map((item) =>
+        item.id === newsId
+          ? {
+              ...item,
+              reactions: {
+                ...item.reactions,
+                [userId]: item.reactions[userId] === emoji ? '' : emoji,
+              },
+              updatedAt: new Date().toISOString(),
+            }
+          : item
+      )
+    );
+  };
+
+  const addComment = (newsId: string, comment: Omit<NewsComment, 'id' | 'createdAt'>) => {
+    let added = false;
+    setNews((prev) =>
+      prev.map((item) => {
+        if (item.id !== newsId) {
+          return item;
+        }
+
+        added = true;
+        return {
+          ...item,
+          comments: [
+            ...item.comments,
+            {
+              ...comment,
+              id: uuidv4(),
+              createdAt: new Date().toISOString(),
+            },
+          ],
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+    return added;
+  };
+
+  const deleteComment = (newsId: string, commentId: string) => {
+    let deleted = false;
+    setNews((prev) =>
+      prev.map((item) => {
+        if (item.id !== newsId || !item.comments.some((comment) => comment.id === commentId)) {
+          return item;
+        }
+
+        deleted = true;
+        return {
+          ...item,
+          comments: item.comments.filter((comment) => comment.id !== commentId),
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+    return deleted;
   };
 
   return (
@@ -155,6 +231,9 @@ export function NewsProvider({ children }: { children: ReactNode }) {
         updateNews,
         deleteNews,
         searchNews,
+        setReaction,
+        addComment,
+        deleteComment,
       }}
     >
       {children}
