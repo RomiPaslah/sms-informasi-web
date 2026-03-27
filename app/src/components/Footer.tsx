@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Facebook, Instagram, Twitter, Youtube } from 'lucide-react';
 import { useSiteContent } from '@/context/SiteContentContext';
+import { Ad } from '@/components/Ad';
 
 export function Footer() {
   const [isVisible, setIsVisible] = useState(false);
@@ -169,6 +170,8 @@ export function Footer() {
           </p>
         </div>
       </div>
+
+      <Ad position="footer" />
     </footer>
   );
 }

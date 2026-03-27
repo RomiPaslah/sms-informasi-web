@@ -1,14 +1,17 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { HomeContent } from '@/types';
+import type { HomeContent, AdSettings } from '@/types';
 
 interface SiteContentContextType {
   homeContent: HomeContent;
   updateHomeContent: (content: HomeContent) => void;
+  adSettings: AdSettings;
+  updateAdSettings: (settings: AdSettings) => void;
 }
 
 const SiteContentContext = createContext<SiteContentContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'sms_home_content';
+const AD_STORAGE_KEY = 'sms_ad_settings';
 
 const DEFAULT_HOME_CONTENT: HomeContent = {
   aboutBadge: 'Tentang Kami',
@@ -73,8 +76,22 @@ const DEFAULT_HOME_CONTENT: HomeContent = {
   ],
 };
 
+const DEFAULT_AD_SETTINGS: AdSettings = {
+  enabled: false,
+  adType: 'adsense',
+  adsensePublisherId: '',
+  customAdHtml: '',
+  adPositions: {
+    header: false,
+    sidebar: false,
+    footer: false,
+    betweenContent: false,
+  },
+};
+
 export function SiteContentProvider({ children }: { children: ReactNode }) {
   const [homeContent, setHomeContent] = useState<HomeContent>(DEFAULT_HOME_CONTENT);
+  const [adSettings, setAdSettings] = useState<AdSettings>(DEFAULT_AD_SETTINGS);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -98,13 +115,36 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    const stored = localStorage.getItem(AD_STORAGE_KEY);
+    if (!stored) {
+      localStorage.setItem(AD_STORAGE_KEY, JSON.stringify(DEFAULT_AD_SETTINGS));
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as Partial<AdSettings>;
+      setAdSettings({
+        ...DEFAULT_AD_SETTINGS,
+        ...parsed,
+      });
+    } catch {
+      localStorage.setItem(AD_STORAGE_KEY, JSON.stringify(DEFAULT_AD_SETTINGS));
+    }
+  }, []);
+
   const updateHomeContent = (content: HomeContent) => {
     setHomeContent(content);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(content));
   };
 
+  const updateAdSettings = (settings: AdSettings) => {
+    setAdSettings(settings);
+    localStorage.setItem(AD_STORAGE_KEY, JSON.stringify(settings));
+  };
+
   return (
-    <SiteContentContext.Provider value={{ homeContent, updateHomeContent }}>
+    <SiteContentContext.Provider value={{ homeContent, updateHomeContent, adSettings, updateAdSettings }}>
       {children}
     </SiteContentContext.Provider>
   );

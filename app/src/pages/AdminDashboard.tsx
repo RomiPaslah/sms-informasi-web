@@ -30,14 +30,14 @@ import { compressImageFile } from '@/lib/image-upload';
 import { useSiteContent } from '@/context/SiteContentContext';
 import type { HomeContent, NewsComment } from '@/types';
 
-type AdminTab = 'news' | 'homepage' | 'comments';
+type AdminTab = 'news' | 'homepage' | 'comments' | 'ads';
 
 const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
 
 export function AdminDashboard() {
   const { user, logout } = useAuth();
   const { news, deleteNews, deleteComment } = useNews();
-  const { homeContent, updateHomeContent } = useSiteContent();
+  const { homeContent, updateHomeContent, adSettings, updateAdSettings } = useSiteContent();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -48,6 +48,7 @@ export function AdminDashboard() {
   const [saveMessage, setSaveMessage] = useState('');
   const [commentQuery, setCommentQuery] = useState('');
   const [mediaUploadMessage, setMediaUploadMessage] = useState('');
+  const [adForm, setAdForm] = useState(adSettings);
   const focusedMediaId = searchParams.get('media');
 
   useEffect(() => {
@@ -55,12 +56,17 @@ export function AdminDashboard() {
   }, [homeContent]);
 
   useEffect(() => {
+    setAdForm(adSettings);
+  }, [adSettings]);
+
+  useEffect(() => {
     const requestedTab = searchParams.get('tab');
 
     if (
       requestedTab === 'news' ||
       requestedTab === 'homepage' ||
-      requestedTab === 'comments'
+      requestedTab === 'comments' ||
+      requestedTab === 'ads'
     ) {
       setActiveTab(requestedTab);
     }
@@ -345,9 +351,12 @@ export function AdminDashboard() {
           <TabButton active={activeTab === 'comments'} onClick={() => switchTab('comments')} icon={<MessageSquare className="h-4 w-4" />}>
             Kelola Komentar
           </TabButton>
+          <TabButton active={activeTab === 'ads'} onClick={() => switchTab('ads')} icon={<Monitor className="h-4 w-4" />}>
+            Pengaturan Iklan
+          </TabButton>
         </div>
 
-        {activeTab === 'news' ? (
+        {activeTab === 'news' && (
           <>
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="relative flex-1">
@@ -429,7 +438,9 @@ export function AdminDashboard() {
               </div>
             </div>
           </>
-        ) : activeTab === 'homepage' ? (
+        )}
+
+        {activeTab === 'homepage' && (
           <section className="space-y-6">
             <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
               <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
@@ -873,7 +884,9 @@ export function AdminDashboard() {
               </div>
             </div>
           </section>
-        ) : (
+        )}
+
+        {activeTab === 'comments' && (
           <section className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
               <div>
@@ -908,6 +921,152 @@ export function AdminDashboard() {
                     formatDate={formatDate}
                   />
                 ))
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'ads' && (
+          <section className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
+            <div className="border-b border-gray-200 pb-4 dark:border-gray-700">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pengaturan Iklan</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Kelola iklan Google AdSense dan iklan kustom untuk menghasilkan pendapatan.
+              </p>
+            </div>
+
+            <div className="mt-6 space-y-6">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={adForm.enabled}
+                    onChange={(e) => setAdForm(prev => ({ ...prev, enabled: e.target.checked }))}
+                    className="w-5 h-5 text-[#d90429] focus:ring-[#d90429] border-gray-300 rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Aktifkan Iklan</span>
+                </label>
+              </div>
+
+              {adForm.enabled && (
+                <>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Tipe Iklan
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="adType"
+                            value="adsense"
+                            checked={adForm.adType === 'adsense'}
+                            onChange={(e) => setAdForm(prev => ({ ...prev, adType: e.target.value as 'adsense' | 'custom' }))}
+                            className="text-[#d90429] focus:ring-[#d90429]"
+                          />
+                          <span className="text-sm text-gray-900 dark:text-white">Google AdSense</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="adType"
+                            value="custom"
+                            checked={adForm.adType === 'custom'}
+                            onChange={(e) => setAdForm(prev => ({ ...prev, adType: e.target.value as 'adsense' | 'custom' }))}
+                            className="text-[#d90429] focus:ring-[#d90429]"
+                          />
+                          <span className="text-sm text-gray-900 dark:text-white">Iklan Kustom</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {adForm.adType === 'adsense' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Publisher ID AdSense
+                        </label>
+                        <input
+                          type="text"
+                          value={adForm.adsensePublisherId || ''}
+                          onChange={(e) => setAdForm(prev => ({ ...prev, adsensePublisherId: e.target.value }))}
+                          placeholder="ca-pub-XXXXXXXXXXXXXXXX"
+                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                        />
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Masukkan Publisher ID dari Google AdSense Anda (contoh: ca-pub-1234567890123456)
+                        </p>
+                      </div>
+                    )}
+
+                    {adForm.adType === 'custom' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          HTML Iklan Kustom
+                        </label>
+                        <textarea
+                          rows={6}
+                          value={adForm.customAdHtml || ''}
+                          onChange={(e) => setAdForm(prev => ({ ...prev, customAdHtml: e.target.value }))}
+                          placeholder="<div>Iklan Anda di sini</div>"
+                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white font-mono text-sm"
+                        />
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Masukkan HTML iklan kustom Anda. Pastikan aman dan tidak mengandung script berbahaya.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        Posisi Iklan
+                      </label>
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          { key: 'header', label: 'Header' },
+                          { key: 'sidebar', label: 'Sidebar' },
+                          { key: 'footer', label: 'Footer' },
+                          { key: 'betweenContent', label: 'Antara Konten' },
+                        ].map(({ key, label }) => (
+                          <label key={key} className="flex items-center gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={adForm.adPositions[key as keyof typeof adForm.adPositions]}
+                              onChange={(e) => setAdForm(prev => ({
+                                ...prev,
+                                adPositions: {
+                                  ...prev.adPositions,
+                                  [key]: e.target.checked
+                                }
+                              }))}
+                              className="w-4 h-4 text-[#d90429] focus:ring-[#d90429] border-gray-300 rounded"
+                            />
+                            <span className="text-sm text-gray-900 dark:text-white">{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                      onClick={() => {
+                        updateAdSettings(adForm);
+                        setSaveMessage('Pengaturan iklan berhasil disimpan!');
+                        setTimeout(() => setSaveMessage(''), 3000);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#d90429] px-6 py-3 text-white font-medium hover:bg-[#ef233c] transition-colors"
+                    >
+                      <Save className="h-4 w-4" />
+                      Simpan Pengaturan
+                    </button>
+                    {saveMessage && (
+                      <span className="text-sm text-green-600 dark:text-green-400">{saveMessage}</span>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </section>

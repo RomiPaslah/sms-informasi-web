@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, MessageCircle, Shield, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSiteContent } from '@/context/SiteContentContext';
+import { Ad } from '@/components/Ad';
 
 export function Home() {
   const { homeContent } = useSiteContent();
@@ -145,6 +146,8 @@ export function Home() {
           </div>
         </div>
       </section>
+
+      <Ad position="header" />
 
       <section id="about" className="relative bg-white py-24 dark:bg-gray-900">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">

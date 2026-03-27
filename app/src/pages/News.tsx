@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, Filter, Newspaper, Search, User } from 'lucide-react';
 import { useNews } from '@/context/NewsContext';
 import { NewsEngagement } from '@/components/news/NewsEngagement';
+import { Ad } from '@/components/Ad';
 import type { News } from '@/types';
 
 export function News() {
@@ -137,6 +138,8 @@ export function News() {
             </div>
           </div>
         )}
+
+        <Ad position="betweenContent" />
 
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">

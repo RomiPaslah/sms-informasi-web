@@ -71,3 +71,16 @@ export interface HomeContent {
   contactDescription: string;
   contacts: ContactItem[];
 }
+
+export interface AdSettings {
+  enabled: boolean;
+  adType: 'custom' | 'adsense';
+  adsensePublisherId?: string;
+  customAdHtml?: string;
+  adPositions: {
+    header: boolean;
+    sidebar: boolean;
+    footer: boolean;
+    betweenContent: boolean;
+  };
+}
