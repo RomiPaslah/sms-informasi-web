@@ -1,0 +1,149 @@
+📌 INSTRUKSI CEPAT DEPLOYMENT
+=============================
+
+✅ SEMUA SUDAH SIAP! Folder public_html telah dibuat dengan lengkap.
+
+📁 STRUKTUR AKHIR:
+==================
+
+SMS Informasi Web/
+├── app/                  ← Folder development (untuk coding)
+├── public_html/          ← Folder production (UPLOAD KE CPANEL)
+│   ├── .htaccess         ✅ Routing rules
+│   ├── index.html        ✅ Main page
+│   ├── assets/           ✅ CSS & JS (minified)
+│   └── images/           ✅ Gambar website
+├── SETUP_GUIDE.md        ✅ Panduan step-by-step
+├── DOKUMENTASI.md        ✅ Dokumentasi teknis
+└── README.md             ✅ Struktur proyek
+
+
+🚀 CARA UPLOAD KE CPANEL:
+==========================
+
+METODE 1: File Manager (PALING MUDAH)
+--------------------------------------
+1. Login cPanel
+2. Buka File Manager
+3. Navigate ke public_html
+4. Upload semua file dari folder public_html lokal
+   - Buka Windows Explorer ke: C:\Users\SPC STYLE 5\Downloads\SMS Informasi Web\public_html
+   - Select semua (Ctrl+A)
+   - Drag & drop ke File Manager
+
+⚠️  PENTING: Upload juga file .htaccess
+   - Di File Manager: Settings → Show Hidden Files
+   - Check .htaccess ada
+
+METODE 2: FTP
+-----------
+1. Download FileZilla (atau FTP client lain)
+2. Connect ke: ftp.yourdomain.com
+3. Username: cPanel username
+4. Password: cPanel password
+5. Navigate ke public_html
+6. Upload semua file dari public_html lokal
+
+
+✅ VERIFIKASI SETELAH UPLOAD:
+==============================
+
+1. Buka domain Anda: https://yourdomain.com
+   → Halaman beranda harus muncul (bukan blank)
+
+2. Test navigasi:
+   - Klik menu "Berita" → harus muncul halaman berita
+   - Klik "Tentang" → scroll ke section about
+   - Klik "Admin" → harus muncul login page
+
+3. F12 Console
+   - Tidak boleh ada error merah
+   - Warning OK
+
+4. Mobile test
+   - Buka dari phone
+   - Layout responsive?
+
+
+🔧 JIKA MASIH BLANK/ERROR:
+===========================
+
+1. BLANK PAGE
+   - F12 Console → cek error message
+   - Check Network tab → assets/index-*.js status 200 OK?
+   - Jika 404 → file tidak ter-upload
+
+2. 404 DI HALAMAN LAIN (/berita, /admin, dll)
+   - .htaccess HARUS ter-upload
+   - Di cPanel: Settings → Show Hidden Files
+   - Check permission .htaccess = 644
+
+3. IMAGES TIDAK MUNCUL
+   - Check images/ folder ada
+   - Verify path case-sensitive
+
+4. CONTACT HOSTING JIKA:
+   - Apache mod_rewrite tidak enabled
+   - Permission issues
+   - Server configuration problems
+
+
+📝 NEXT STEPS:
+==============
+
+1. ✅ Upload semua file dari public_html ke cPanel
+2. ✅ Verify website berjalan
+3. 🔧 Setup Google OAuth (optional)
+   - Buka Google Cloud Console
+   - Create OAuth credentials
+   - Update src/lib/google-auth.ts
+   - Rebuild: npm run build
+   - Upload ulang
+
+4. 💰 Setup Google AdSense (optional, untuk monetisasi)
+   - Daftar https://www.google.com/adsense
+   - Get Publisher ID
+   - Admin Dashboard → Pengaturan Iklan → Aktifkan
+
+5. 📊 Monitor website
+   - Setup Google Analytics
+   - Check console for errors
+   - Regular backups
+
+
+💡 TIPS PENTING:
+================
+
+- Jangan edit file di cPanel public_html langsung
+- Edit di folder app/src/ lokal
+- Rebuild: npm run build
+- Upload folder dist/* atau copy dari public_html/
+
+- Data website disimpan di browser localStorage
+- Jika clear browser cache → data hilang
+- Untuk data persistent → butuh database backend
+
+- Setiap update code: build → upload ulang
+
+- Keep backup of public_html folder
+
+
+📚 FILE REFERENSI:
+==================
+
+- SETUP_GUIDE.md     → Panduan detail deployment
+- DOKUMENTASI.md    → Dokumentasi teknis
+- README.md         → Struktur proyek
+
+
+🎉 SELESAI!
+===========
+
+Website Anda sudah production-ready!
+Tinggal upload ke cPanel dan sesuaikan dengan domain Anda.
+
+Jika ada pertanyaan atau error, cek console browser (F12) untuk detail error.
+
+
+Dibuat: 27 Maret 2026
+Status: ✅ READY FOR DEPLOYMENT

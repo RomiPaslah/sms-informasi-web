@@ -79,8 +79,8 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6 sm:space-y-8">
         <Link
           to="/"
           className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-[#d90429] transition-colors"
@@ -90,9 +90,9 @@ export function Login() {
         </Link>
 
         <div className="text-center">
-          <img src="/images/sms-logo.png" alt="SMS Logo" className="h-20 w-auto mx-auto" />
-          <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">Login Akun</h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <img src="/images/sms-logo.png" alt="SMS Logo" className="h-16 sm:h-20 w-auto mx-auto" />
+          <h2 className="mt-4 sm:mt-6 text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Login Akun</h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 px-2">
             Masuk untuk membaca, memberi reaksi, berkomentar, atau mengelola konten sesuai akses akun Anda
           </p>
         </div>
@@ -205,12 +205,6 @@ export function Login() {
                 Daftar sekarang
               </Link>
             </p>
-          </div>
-
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
-            <p className="font-medium text-blue-800 dark:text-blue-400 mb-2">Akun editor demo:</p>
-            <p className="text-blue-700 dark:text-blue-300">Email: admin@sinergimudastrategis.com</p>
-            <p className="text-blue-700 dark:text-blue-300">Password: admin123</p>
           </div>
         </form>
       </div>

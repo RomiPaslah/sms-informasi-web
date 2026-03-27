@@ -75,19 +75,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const users = ensureDefaultUsers(JSON.parse(localStorage.getItem(USERS_KEY) || '[]'));
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    try {
+      const storedUsers = localStorage.getItem(USERS_KEY);
+      const users = ensureDefaultUsers(storedUsers ? JSON.parse(storedUsers) : []);
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const session = JSON.parse(stored);
-        setUser(session.user);
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const session = JSON.parse(stored);
+          if (session?.user) {
+            setUser(session.user);
+          }
+        } catch (e) {
+          console.warn('[AuthContext] Failed to parse stored session:', e);
+          localStorage.removeItem(STORAGE_KEY);
+        }
       }
+    } catch (e) {
+      console.warn('[AuthContext] Initialization error:', e);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<User | null> => {
