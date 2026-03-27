@@ -3,11 +3,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowDown,
   ArrowUp,
+  CheckCircle,
   Edit2,
   Eye,
   EyeOff,
   Home,
   ImagePlus,
+  Key,
   LayoutPanelTop,
   LogOut,
   MessageSquare,
@@ -15,12 +17,15 @@ import {
   Newspaper,
   Phone,
   Plus,
+  RefreshCw,
   Save,
   Search,
   Settings,
+  ShieldCheck,
   Sparkles,
   Trash2,
-  User,
+  User as UserIcon,
+  Users,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -28,15 +33,16 @@ import { useNews } from '@/context/NewsContext';
 import { ImageDropzone } from '@/components/ui/image-dropzone';
 import { compressImageFile } from '@/lib/image-upload';
 import { useSiteContent } from '@/context/SiteContentContext';
-import type { HomeContent, NewsComment } from '@/types';
+import { authApi } from '@/lib/api';
+import type { HomeContent, NewsComment, User } from '@/types';
 
-type AdminTab = 'news' | 'homepage' | 'comments' | 'ads';
+type AdminTab = 'news' | 'users' | 'homepage' | 'comments' | 'ads';
 
 const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
 
 export function AdminDashboard() {
-  const { user, logout } = useAuth();
-  const { news, deleteNews, deleteComment } = useNews();
+  const { user, logout, promoteUserToAdmin, approveUser, rejectUser, changePassword } = useAuth();
+  const { news, deleteNews, deleteComment, togglePublish } = useNews();
   const { homeContent, updateHomeContent, adSettings, updateAdSettings } = useSiteContent();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,11 +50,23 @@ export function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>('news');
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [passwordTargetEmail, setPasswordTargetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [userActionMessage, setUserActionMessage] = useState('');
+  const [userActionSuccess, setUserActionSuccess] = useState(true);
+  const [adminEmailToPromote, setAdminEmailToPromote] = useState('');
+  const [promoteMessage, setPromoteMessage] = useState('');
+  const [promoteSuccess, setPromoteSuccess] = useState(true);
   const [contentForm, setContentForm] = useState<HomeContent>(homeContent);
   const [saveMessage, setSaveMessage] = useState('');
   const [commentQuery, setCommentQuery] = useState('');
   const [mediaUploadMessage, setMediaUploadMessage] = useState('');
   const [adForm, setAdForm] = useState(adSettings);
+  const [isSaving, setIsSaving] = useState(false);
   const focusedMediaId = searchParams.get('media');
 
   useEffect(() => {
@@ -58,6 +76,10 @@ export function AdminDashboard() {
   useEffect(() => {
     setAdForm(adSettings);
   }, [adSettings]);
+
+  useEffect(() => {
+    refreshUsers();
+  }, []);
 
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
@@ -88,7 +110,7 @@ export function AdminDashboard() {
   }, [activeTab, focusedMediaId, contentForm.activitiesMedia.length]);
 
   const filteredNews = news.filter((item) =>
-    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+    (item.title || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const flattenedComments = useMemo(
@@ -116,13 +138,106 @@ export function AdminDashboard() {
     [contentForm, homeContent]
   );
 
-  const handleDelete = (id: string) => {
+  const refreshUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const { users: apiUsers } = await authApi.getUsers();
+      setUsers(
+        apiUsers.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          approved: u.approved,
+          createdAt: u.createdAt,
+          authProvider: (u.authProvider as 'local') ?? 'local',
+        }))
+      );
+    } catch {
+      // silently fail
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  const handleApproveUser = async (email: string) => {
+    const ok = await approveUser(email);
+    if (ok) {
+      setUserActionSuccess(true);
+      setUserActionMessage(`✅ Akun ${email} berhasil disetujui. User sekarang bisa login.`);
+      await refreshUsers();
+    } else {
+      setUserActionSuccess(false);
+      setUserActionMessage(`❌ Gagal menyetujui ${email}. Silakan coba lagi.`);
+    }
+  };
+
+  const handleRejectUser = async (email: string) => {
+    if (!window.confirm(`Yakin ingin menolak dan menghapus akun ${email}?`)) return;
+    const ok = await rejectUser(email);
+    if (ok) {
+      setUserActionSuccess(true);
+      setUserActionMessage(`🗑️ Akun ${email} ditolak dan dihapus dari sistem.`);
+      await refreshUsers();
+    } else {
+      setUserActionSuccess(false);
+      setUserActionMessage(`❌ Gagal menghapus ${email}. Mungkin akun ini tidak bisa dihapus.`);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordTargetEmail.trim() || !newPassword.trim()) {
+      setUserActionSuccess(false);
+      setUserActionMessage('Email dan password baru wajib diisi');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setUserActionSuccess(false);
+      setUserActionMessage('Password baru minimal 6 karakter');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    const result = await changePassword(passwordTargetEmail, newPassword);
+    setIsChangingPassword(false);
+
+    if (result.success) {
+      setUserActionSuccess(true);
+      setUserActionMessage(`🔑 Password ${passwordTargetEmail} berhasil diubah.`);
+      setPasswordTargetEmail('');
+      setNewPassword('');
+    } else {
+      setUserActionSuccess(false);
+      setUserActionMessage(`❌ ${result.message}`);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
     if (deleteConfirm === id) {
-      deleteNews(id);
+      await deleteNews(id);
       setDeleteConfirm(null);
     } else {
       setDeleteConfirm(id);
       setTimeout(() => setDeleteConfirm(null), 3000);
+    }
+  };
+
+  const handlePromoteAdmin = async () => {
+    if (!adminEmailToPromote.trim()) {
+      setPromoteSuccess(false);
+      setPromoteMessage('Masukkan email user untuk dipromosi menjadi admin.');
+      return;
+    }
+
+    const success = await promoteUserToAdmin(adminEmailToPromote);
+    if (success) {
+      setPromoteSuccess(true);
+      setPromoteMessage(`✅ Berhasil promosikan ${adminEmailToPromote} menjadi admin.`);
+      setAdminEmailToPromote('');
+      await refreshUsers();
+    } else {
+      setPromoteSuccess(false);
+      setPromoteMessage(`❌ User dengan email ${adminEmailToPromote} tidak ditemukan.`);
     }
   };
 
@@ -239,14 +354,69 @@ export function AdminDashboard() {
     });
   };
 
+  const handleNavLinkChange = (id: string, field: 'name' | 'href', value: string) => {
+    setSaveMessage('');
+    setContentForm((prev) => ({
+      ...prev,
+      navLinks: prev.navLinks.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+    }));
+  };
+
+  const addNavLink = () => {
+    setSaveMessage('');
+    setContentForm((prev) => ({
+      ...prev,
+      navLinks: [
+        ...prev.navLinks,
+        {
+          id: `nav-${Date.now()}`,
+          name: 'Menu Baru',
+          href: '/#',
+        },
+      ],
+    }));
+  };
+
+  const removeNavLink = (id: string) => {
+    setSaveMessage('');
+    setContentForm((prev) => ({
+      ...prev,
+      navLinks: prev.navLinks.filter((item) => item.id !== id),
+    }));
+  };
+
+  const moveNavLink = (id: string, direction: 'up' | 'down') => {
+    setSaveMessage('');
+    setContentForm((prev) => {
+      const currentIndex = prev.navLinks.findIndex((item) => item.id === id);
+      if (currentIndex === -1) return prev;
+      const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      if (targetIndex < 0 || targetIndex >= prev.navLinks.length) return prev;
+      const nextNav = [...prev.navLinks];
+      const [selectedItem] = nextNav.splice(currentIndex, 1);
+      nextNav.splice(targetIndex, 0, selectedItem);
+      return {
+        ...prev,
+        navLinks: nextNav,
+      };
+    });
+  };
+
   const resetHomepageEditor = () => {
     setContentForm(homeContent);
     setSaveMessage('Perubahan lokal dibatalkan.');
   };
 
-  const handleSaveHomepage = () => {
-    updateHomeContent(contentForm);
-    setSaveMessage('Konten halaman depan berhasil disimpan.');
+  const handleSaveHomepage = async () => {
+    setIsSaving(true);
+    try {
+      await updateHomeContent(contentForm);
+      setSaveMessage('✅ Konten halaman depan berhasil disimpan ke database.');
+    } catch {
+      setSaveMessage('❌ Gagal menyimpan. Silakan coba lagi.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const switchTab = (tab: AdminTab) => {
@@ -320,7 +490,7 @@ export function AdminDashboard() {
                 <span className="hidden sm:inline">Beranda</span>
               </Link>
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <User className="w-5 h-5" />
+                <UserIcon className="w-5 h-5" />
                 <span className="hidden sm:inline">{user?.name}</span>
               </div>
               <button onClick={handleLogout} className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-red-600 transition-colors">
@@ -338,12 +508,43 @@ export function AdminDashboard() {
           <StatCard label="Dipublikasikan" value={news.filter((item) => item.published).length} icon={<Eye className="w-6 h-6 text-green-600" />} tint="bg-green-100 dark:bg-green-900/20" />
           <StatCard label="Draft" value={news.filter((item) => !item.published).length} icon={<EyeOff className="w-6 h-6 text-yellow-600" />} tint="bg-yellow-100 dark:bg-yellow-900/20" />
           <StatCard label="Komentar" value={totalComments} icon={<MessageSquare className="w-6 h-6 text-violet-600" />} tint="bg-violet-100 dark:bg-violet-900/20" />
-          <StatCard label="Role" value={user?.role ?? '-'} icon={<User className="w-6 h-6 text-blue-600" />} tint="bg-blue-100 dark:bg-blue-900/20" capitalize />
+          <StatCard label="Role" value={user?.role ?? '-'} icon={<UserIcon className="w-6 h-6 text-blue-600" />} tint="bg-blue-100 dark:bg-blue-900/20" capitalize />
+        </div>
+
+        {/* Promosi Admin - only visible to primary admin or admins */}
+        <div className="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ShieldCheck className="w-4 h-4 text-[#d90429]" />
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Promosikan User menjadi Admin</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="email"
+              value={adminEmailToPromote}
+              onChange={(e) => setAdminEmailToPromote(e.target.value)}
+              placeholder="Masukkan email user yang akan dipromosikan"
+              className="flex-1 min-w-[220px] px-3 py-2 border border-gray-300 rounded-lg bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200"
+            />
+            <button
+              onClick={handlePromoteAdmin}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+            >
+              Promosikan
+            </button>
+          </div>
+          {promoteMessage && (
+            <p className={`mt-2 text-sm ${promoteSuccess ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {promoteMessage}
+            </p>
+          )}
         </div>
 
         <div className="mb-6 flex flex-wrap gap-3">
           <TabButton active={activeTab === 'news'} onClick={() => switchTab('news')} icon={<Newspaper className="h-4 w-4" />}>
             Kelola Berita
+          </TabButton>
+          <TabButton active={activeTab === 'users'} onClick={() => switchTab('users')} icon={<UserIcon className="h-4 w-4" />}>
+            Kelola Pengguna
           </TabButton>
           <TabButton active={activeTab === 'homepage'} onClick={() => switchTab('homepage')} icon={<Settings className="h-4 w-4" />}>
             Edit Halaman Depan
@@ -419,6 +620,13 @@ export function AdminDashboard() {
                           <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400">{formatDate(item.createdAt)}</td>
                           <td className="px-4 sm:px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-1 sm:gap-2">
+                              <button
+                                onClick={() => togglePublish(item.id)}
+                                className={`px-2 py-1 text-xs rounded-lg font-semibold transition ${item.published ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
+                                title={item.published ? 'Set sebagai draft' : 'Terbitkan berita'}
+                              >
+                                {item.published ? '↓ Draft' : '↑ Publish'}
+                              </button>
                               <Link to={`/admin/berita/edit/${item.id}`} className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Edit">
                                 <Edit2 className="w-4 h-4" />
                               </Link>
@@ -439,6 +647,188 @@ export function AdminDashboard() {
               </div>
             </div>
           </>
+        )}
+
+        {activeTab === 'users' && (
+          <section className="space-y-6">
+            {/* Notification */}
+            {userActionMessage && (
+              <div className={`rounded-xl border px-4 py-3 text-sm ${userActionSuccess ? 'border-green-200 bg-green-50 text-green-800 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-200' : 'border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-200'}`}>
+                {userActionMessage}
+              </div>
+            )}
+
+            {/* Users Table */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
+              <div className="flex items-center justify-between gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#d90429]" />
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Kelola Pengguna</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Setujui atau tolak pendaftaran baru dari database.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={refreshUsers}
+                  disabled={isLoadingUsers}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoadingUsers ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
+
+              {/* Pending approval banner */}
+              {users.filter(u => !u.approved && u.role !== 'admin').length > 0 && (
+                <div className="mt-4 flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-4 py-3">
+                  <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <p className="text-sm text-amber-800 dark:text-amber-300">
+                    <strong>{users.filter(u => !u.approved && u.role !== 'admin').length} pendaftaran</strong> menunggu persetujuan Anda.
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full text-left text-sm text-gray-500 dark:text-gray-400">
+                  <thead className="border-b border-gray-200 font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-300">
+                    <tr>
+                      <th className="px-4 py-2">Nama</th>
+                      <th className="px-4 py-2">Email</th>
+                      <th className="px-4 py-2">Peran</th>
+                      <th className="px-4 py-2">Status</th>
+                      <th className="px-4 py-2 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoadingUsers ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center">
+                          <div className="flex items-center justify-center gap-2 text-gray-400">
+                            <div className="w-4 h-4 border-2 border-gray-300 border-t-[#d90429] rounded-full animate-spin" />
+                            Memuat data pengguna...
+                          </div>
+                        </td>
+                      </tr>
+                    ) : users.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400">Belum ada pengguna terdaftar</td>
+                      </tr>
+                    ) : (
+                      users.map((usr) => (
+                        <tr key={usr.id} className={`border-b border-gray-100 dark:border-gray-700 ${!usr.approved && usr.role !== 'admin' ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}`}>
+                          <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{usr.name}</td>
+                          <td className="px-4 py-3 text-xs">{usr.email}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
+                              usr.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
+                              usr.role === 'editor' ? 'bg-blue-100 text-blue-700' :
+                              'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                            }`}>{usr.role}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {usr.approved ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
+                                <CheckCircle className="w-3.5 h-3.5" /> Disetujui
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                <ShieldCheck className="w-3.5 h-3.5" /> Menunggu
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right space-x-1.5">
+                            {!usr.approved && usr.role !== 'admin' && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveUser(usr.email)}
+                                  className="rounded-lg bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 hover:bg-green-200 transition"
+                                >
+                                  ✓ Setujui
+                                </button>
+                                <button
+                                  onClick={() => handleRejectUser(usr.email)}
+                                  className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-200 transition"
+                                >
+                                  ✕ Tolak
+                                </button>
+                              </>
+                            )}
+                            {usr.role !== 'admin' && usr.approved && (
+                              <button
+                                onClick={() => handleRejectUser(usr.email)}
+                                className="rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
+                                title="Hapus akun"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Change Password Card */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
+              <div className="flex items-center gap-2 border-b border-gray-200 pb-4 dark:border-gray-700 mb-4">
+                <Key className="w-5 h-5 text-[#d90429]" />
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white">Ubah Password Akun</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Sebagai admin, Anda bisa mengubah password akun mana saja.</p>
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email target</label>
+                  <input
+                    type="email"
+                    value={passwordTargetEmail}
+                    onChange={(e) => setPasswordTargetEmail(e.target.value)}
+                    placeholder="email@akun.com"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Password baru</label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Min. 6 karakter"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleChangePassword}
+                    disabled={isChangingPassword}
+                    className="w-full rounded-lg bg-[#d90429] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#ef233c] disabled:opacity-50 transition"
+                  >
+                    {isChangingPassword ? (
+                      <span className="flex items-center justify-center gap-1.5">
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Menyimpan...
+                      </span>
+                    ) : (
+                      'Ubah Password'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
         )}
 
         {activeTab === 'homepage' && (
@@ -466,10 +856,15 @@ export function AdminDashboard() {
                     <button
                       type="button"
                       onClick={handleSaveHomepage}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#d90429] px-4 py-3 font-medium text-white hover:bg-[#ef233c]"
+                      disabled={isSaving || !isHomepageDirty}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#d90429] px-4 py-3 font-medium text-white hover:bg-[#ef233c] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Save className="h-4 w-4" />
-                      Simpan Perubahan
+                      {isSaving ? (
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      {isSaving ? 'Menyimpan...' : 'Simpan ke Database'}
                     </button>
                   </div>
                 </div>
@@ -574,6 +969,73 @@ export function AdminDashboard() {
                         Mode edit cepat aktif. Kartu yang dipilih dari beranda akan disorot di daftar media.
                       </div>
                     )}
+                  </EditorCard>
+
+                  <EditorCard
+                    title="Menu Navigasi"
+                    description="Kelola menu utama yang tampil pada header dan footer."
+                    icon={<LayoutPanelTop className="h-5 w-5 text-[#d90429]" />}
+                  >
+                    <div className="space-y-3">
+                      {contentForm.navLinks.map((nav, index) => (
+                        <div key={nav.id} className="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Menu #{index + 1}</p>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => moveNavLink(nav.id, 'up')}
+                                disabled={index === 0}
+                                className="px-2 py-1 text-xs font-semibold rounded bg-gray-100 dark:bg-gray-700"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveNavLink(nav.id, 'down')}
+                                disabled={index === contentForm.navLinks.length - 1}
+                                className="px-2 py-1 text-xs font-semibold rounded bg-gray-100 dark:bg-gray-700"
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeNavLink(nav.id)}
+                                className="px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-600 hover:bg-red-200"
+                              >
+                                Hapus
+                              </button>
+                            </div>
+                          </div>
+
+                          <Field label="Nama Menu">
+                            <input
+                              type="text"
+                              value={nav.name}
+                              onChange={(e) => handleNavLinkChange(nav.id, 'name', e.target.value)}
+                              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                            />
+                          </Field>
+
+                          <Field label="URL / Hash">
+                            <input
+                              type="text"
+                              value={nav.href}
+                              onChange={(e) => handleNavLinkChange(nav.id, 'href', e.target.value)}
+                              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                            />
+                          </Field>
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={addNavLink}
+                        className="rounded-xl border border-[#d90429] bg-[#d90429]/10 px-4 py-2 text-sm font-medium text-[#d90429] hover:bg-[#d90429]/20"
+                      >
+                        Tambah Item Menu
+                      </button>
+                    </div>
                   </EditorCard>
 
                   <EditorCard

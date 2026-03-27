@@ -304,9 +304,10 @@ Performance:
    → React dengan emoji
 
 ✅ User Authentication
-   → Local login/register
-   → Google OAuth (jika sudah setup)
-   → Role-based access
+   → Local login/register dengan email & password
+   → Google OAuth login/register (SUDAH TERINTEGRASI!)
+   → Role-based access (admin/user)
+   → Session management dengan localStorage
 
 ✅ Advertising
    → Admin → Pengaturan Iklan
@@ -345,10 +346,14 @@ Performance:
    - Download data (jika ada export feature)
    - Save di tempat aman
 
-2. Setup Google OAuth
-   - Buka Google Cloud Console
-   - Create OAuth credentials
-   - Update di admin settings
+2. Setup Google OAuth (WAJIB UNTUK PRODUCTION!)
+   - Buka Google Cloud Console (console.cloud.google.com)
+   - Create project atau pilih existing
+   - Enable "Google Identity Services API"
+   - Create OAuth 2.0 Client ID → Web application
+   - Set Authorized JavaScript origins: https://yourdomain.com
+   - Copy Client ID ke file .env: VITE_GOOGLE_CLIENT_ID=your_client_id
+   - Upload ulang .env ke server
 
 3. Setup Google AdSense
    - Daftar Google AdSense
@@ -382,11 +387,15 @@ A: Konten via admin OK. Code/design → harus rebuild & upload.
 Q: Hosting tidak support .htaccess?
 A: Gunakan HashRouter untuk # routing. Rebuild & upload.
 
+Q: Google OAuth tidak berfungsi?
+A: Pastikan VITE_GOOGLE_CLIENT_ID sudah diisi di .env file di server.
+   Domain harus HTTPS. Authorized origins di Google Console harus match.
+
 Q: Error "Cannot find module"?
-A: Pastikan .htaccess ter-upload & aktif.
+A: Pastikan .htaccess ter-upload & aktif. Jika tidak support → rebuild dengan HashRouter.
 
 Q: Lambat loading?
-A: Normal di koneksi lambat. Enable gzip di cPanel.
+A: Normal di koneksi lambat. Enable gzip di cPanel. Optimize images jika perlu.
 
 Q: Bisa pakai domain berbeda?
 A: Ya, tapi configure Vite base path jika di subfolder.

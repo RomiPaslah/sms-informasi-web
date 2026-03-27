@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
+import { useSiteContent } from '@/context/SiteContentContext';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -14,13 +15,17 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
-    { name: 'Beranda', href: '#hero' },
-    { name: 'Tentang', href: '#about' },
-    { name: 'Visi & Misi', href: '#vision' },
-    { name: 'Pilar', href: '#pillars' },
-    { name: 'Kontak', href: '#contact' },
-  ];
+  const { homeContent } = useSiteContent();
+
+  const navLinks = homeContent?.navLinks?.length
+    ? homeContent.navLinks.map((item) => ({ name: item.name, href: item.href, id: item.id }))
+    : [
+        { id: 'nav-beranda', name: 'Beranda', href: '#hero' },
+        { id: 'nav-tentang', name: 'Tentang', href: '#about' },
+        { id: 'nav-visi', name: 'Visi & Misi', href: '#vision' },
+        { id: 'nav-pillars', name: 'Pilar', href: '#pillars' },
+        { id: 'nav-kontak', name: 'Kontak', href: '#contact' },
+      ];
 
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
@@ -110,13 +115,13 @@ const Navbar = () => {
         {/* Mobile Menu */}
         <div
           className={`lg:hidden overflow-hidden transition-all duration-500 ${
-            isMobileMenuOpen ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'
+            isMobileMenuOpen ? 'max-h-[calc(100vh-120px)] opacity-100 mt-4' : 'max-h-0 opacity-0'
           }`}
         >
-          <div className="bg-white rounded-xl shadow-xl p-4 space-y-2">
+          <div className="bg-white rounded-xl shadow-xl p-4 space-y-2 max-h-[calc(100vh-170px)] overflow-y-auto">
             {navLinks.map((link) => (
               <a
-                key={link.name}
+                key={link.id ?? link.name}
                 href={link.href}
                 onClick={(e) => {
                   e.preventDefault();

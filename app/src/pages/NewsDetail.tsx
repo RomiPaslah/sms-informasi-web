@@ -1,37 +1,50 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, User } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, Calendar, User, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNews } from '@/context/NewsContext';
 import { NewsEngagement } from '@/components/news/NewsEngagement';
 
 export function NewsDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { getNewsById, publishedNews, addComment } = useNews();
+  const { getNewsById, publishedNews, addComment, isLoading } = useNews();
   const { user, isAuthenticated } = useAuth();
   const [comment, setComment] = useState('');
   const [commentError, setCommentError] = useState('');
+  const [isContentExpanded, setIsContentExpanded] = useState(false);
 
   const news = id ? getNewsById(id) : undefined;
 
-  useEffect(() => {
-    if (!news || !news.published) {
-      navigate('/berita');
-    }
-  }, [news, navigate]);
+  const sortedComments = useMemo(() => {
+    if (!news) return [];
+    return [...news.comments].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }, [news]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d90429]"></div>
+      </div>
+    );
+  }
 
   if (!news || !news.published) {
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center p-6 text-center">
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Berita Tidak Ditemukan</h2>
+        <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md">
+          Maaf, artikel yang Anda cari mungkin telah dihapus, belum dipublikasikan, atau link yang Anda buka salah.
+        </p>
+        <Link to="/berita" className="px-6 py-3 bg-[#d90429] text-white font-medium rounded-xl hover:bg-[#ef233c] transition-colors shadow-md">
+          Lihat Berita Lainnya
+        </Link>
+      </div>
+    );
   }
 
   const relatedNews = publishedNews
     .filter((item) => item.category === news.category && item.id !== news.id)
     .slice(0, 3);
-
-  const sortedComments = useMemo(() => {
-    return [...news.comments].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  }, [news.comments]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -112,11 +125,39 @@ export function NewsDetail() {
               </span>
             </div>
 
-            <div className="mb-8">
+            <div className="mb-8 border-b border-gray-100 dark:border-gray-700 pb-8">
               <NewsEngagement news={news} showCommentsLink={false} />
             </div>
 
-            <div className="prose prose-lg dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: news.content }} />
+            <div className={`relative transition-all duration-700 ease-in-out ${isContentExpanded ? 'pb-8' : 'max-h-[300px] overflow-hidden'}`}>
+              <div className="prose prose-lg dark:prose-invert max-w-none text-gray-800 dark:text-gray-200">
+                {news.content && news.content.trim() !== '' ? (
+                  (news.content || '').includes('<p>') || (news.content || '').includes('<') ? (
+                    <div dangerouslySetInnerHTML={{ __html: news.content || '' }} />
+                  ) : (
+                    <div className="whitespace-pre-wrap leading-relaxed">{news.content || ''}</div>
+                  )
+                ) : (
+                  <div className="whitespace-pre-wrap leading-relaxed italic text-gray-500">{news.excerpt || 'Belum ada konten artikel.'}</div>
+                )}
+              </div>
+
+              {!isContentExpanded && news.content && news.content.length > 300 && (
+                <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none" />
+              )}
+            </div>
+
+            {!isContentExpanded && news.content && news.content.length > 300 && (
+              <div className="relative z-10 flex justify-center -mt-6 mb-12">
+                <button
+                  onClick={() => setIsContentExpanded(true)}
+                  className="group flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#d90429] to-[#ef233c] text-white font-bold rounded-full shadow-[0_8px_30px_rgb(217,4,41,0.3)] hover:shadow-[0_8px_30px_rgb(217,4,41,0.5)] transition-all duration-300 transform hover:-translate-y-1 ring-4 ring-white dark:ring-gray-800"
+                >
+                  <span>Baca Selengkapnya</span>
+                  <ChevronDown className="w-5 h-5 transition-transform duration-300 group-hover:translate-y-1" />
+                </button>
+              </div>
+            )}
           </div>
         </article>
 

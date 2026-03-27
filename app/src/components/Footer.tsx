@@ -29,13 +29,15 @@ export function Footer() {
     return () => observer.disconnect();
   }, []);
 
-  const navLinks = [
-    { name: 'Beranda', href: '/' },
-    { name: 'Berita', href: '/berita' },
-    { name: 'Tentang', href: '/#about' },
-    { name: 'Visi & Misi', href: '/#vision' },
-    { name: 'Kontak', href: '/#contact' },
-  ];
+  const navLinks = homeContent?.navLinks?.length
+    ? homeContent.navLinks
+    : [
+        { id: 'nav-beranda', name: 'Beranda', href: '/' },
+        { id: 'nav-berita', name: 'Berita', href: '/berita' },
+        { id: 'nav-tentang', name: 'Tentang', href: '/#about' },
+        { id: 'nav-visi', name: 'Visi & Misi', href: '/#vision' },
+        { id: 'nav-kontak', name: 'Kontak', href: '/#contact' },
+      ];
 
   const socialLinks = [
     { icon: Instagram, href: '#', label: 'Instagram' },
@@ -124,7 +126,7 @@ export function Footer() {
             <nav className="space-y-3">
               {navLinks.map((link) => (
                 <button
-                  key={link.name}
+                  key={link.id ?? link.name}
                   type="button"
                   onClick={() => navigateToLink(link.href)}
                   className="block text-left text-white/60 transition-colors duration-300 hover:text-[#d90429]"

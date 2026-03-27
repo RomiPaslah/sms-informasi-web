@@ -19,6 +19,7 @@ export interface User {
   email: string;
   role: 'admin' | 'editor' | 'participant';
   createdAt: string;
+  approved?: boolean;
   authProvider?: 'local' | 'google';
   avatar?: string;
 }
@@ -57,6 +58,12 @@ export interface ContactItem {
   highlight?: boolean;
 }
 
+export interface NavLinkItem {
+  id: string;
+  name: string;
+  href: string;
+}
+
 export interface HomeContent {
   aboutBadge: string;
   aboutTitle: string;
@@ -70,6 +77,7 @@ export interface HomeContent {
   contactTitle: string;
   contactDescription: string;
   contacts: ContactItem[];
+  navLinks: NavLinkItem[];
 }
 
 export interface AdSettings {

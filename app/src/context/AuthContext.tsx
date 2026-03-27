@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { authApi, ApiError, type ApiUser } from '@/lib/api';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -6,185 +7,128 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   canAccessAdmin: boolean;
-  login: (email: string, password: string) => Promise<User | null>;
-  loginWithGoogle: () => Promise<User | null>;
-  register: (name: string, email: string, password: string) => Promise<User | null>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ user: User | null; error?: string }>;
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  promoteUserToAdmin: (email: string) => Promise<boolean>;
+  approveUser: (email: string) => Promise<boolean>;
+  rejectUser: (email: string) => Promise<boolean>;
+  changePassword: (email: string, newPassword: string, currentPassword?: string) => Promise<{ success: boolean; message: string }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'sms_auth';
-const USERS_KEY = 'sms_users';
-
-const PRIMARY_ADMIN = {
-  id: 'admin-utama-1',
-  name: 'Admin Utama',
-  email: 'romipaslah027@gmail.com',
-  password: 'admin123',
-  role: 'admin' as const,
-  createdAt: new Date().toISOString(),
-  isPrimaryAdmin: true,
-  authProvider: 'local',
-};
-
-const DEMO_EDITOR = {
-  id: 'editor-demo-1',
-  name: 'Admin Demo',
-  email: 'admin@sinergimudastrategis.com',
-  password: 'admin123',
-  role: 'editor' as const,
-  createdAt: new Date().toISOString(),
-  authProvider: 'local',
-};
-
-const sanitizeUser = (rawUser: any): User => {
-  const { password: _password, ...userWithoutPassword } = rawUser;
-  return userWithoutPassword;
-};
-
-const ensureDefaultUsers = (rawUsers: unknown) => {
-  const users = Array.isArray(rawUsers) ? [...rawUsers] : [];
-
-  const hasPrimaryAdmin = users.some(
-    (item: any) => item?.email?.toLowerCase?.() === PRIMARY_ADMIN.email.toLowerCase()
-  );
-  const hasDemoEditor = users.some(
-    (item: any) => item?.email?.toLowerCase?.() === DEMO_EDITOR.email.toLowerCase()
-  );
-
-  if (!hasPrimaryAdmin) {
-    users.unshift(PRIMARY_ADMIN);
-  }
-
-  if (!hasDemoEditor) {
-    users.push(DEMO_EDITOR);
-  } else {
-    return users.map((item: any) =>
-      item?.email?.toLowerCase?.() === DEMO_EDITOR.email.toLowerCase()
-        ? { ...item, role: 'editor' }
-        : item
-    );
-  }
-
-  return users;
-};
+function apiUserToUser(apiUser: ApiUser): User {
+  return {
+    id: apiUser.id,
+    name: apiUser.name,
+    email: apiUser.email,
+    role: apiUser.role,
+    approved: apiUser.approved,
+    createdAt: apiUser.createdAt,
+    authProvider: (apiUser.authProvider as 'local') ?? 'local',
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Restore session on mount
   useEffect(() => {
-    try {
-      const storedUsers = localStorage.getItem(USERS_KEY);
-      const users = ensureDefaultUsers(storedUsers ? JSON.parse(storedUsers) : []);
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          const session = JSON.parse(stored);
-          if (session?.user) {
-            setUser(session.user);
-          }
-        } catch (e) {
-          console.warn('[AuthContext] Failed to parse stored session:', e);
-          localStorage.removeItem(STORAGE_KEY);
-        }
-      }
-    } catch (e) {
-      console.warn('[AuthContext] Initialization error:', e);
-    } finally {
-      setIsLoading(false);
-    }
+    authApi.me()
+      .then(({ user: apiUser }) => {
+        if (apiUser) setUser(apiUserToUser(apiUser));
+      })
+      .catch(() => {
+        // No session or network error
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (email: string, password: string): Promise<User | null> => {
-    const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    const normalizedEmail = email.trim().toLowerCase();
-    const foundUser = users.find(
-      (item: any) => item.email.toLowerCase() === normalizedEmail && item.password === password
-    );
-
-    if (!foundUser) {
-      return null;
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<{ user: User | null; error?: string }> => {
+    try {
+      const { user: apiUser } = await authApi.login(email, password);
+      const u = apiUserToUser(apiUser);
+      setUser(u);
+      return { user: u };
+    } catch (err) {
+      if (err instanceof ApiError) {
+        return { user: null, error: err.message };
+      }
+      return { user: null, error: 'Terjadi kesalahan. Silakan coba lagi.' };
     }
-
-    const userWithoutPassword = sanitizeUser(foundUser);
-    setUser(userWithoutPassword);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: userWithoutPassword }));
-    return userWithoutPassword;
   };
 
-  const loginWithGoogle = async (): Promise<User | null> => {
-    const { requestGoogleCredential } = await import('@/lib/google-auth');
-    const profile = await requestGoogleCredential();
-
-    if (!profile.email_verified) {
-      return null;
+  const register = async (
+    name: string,
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await authApi.register(name, email, password);
+      return { success: true, message: res.message };
+    } catch (err) {
+      if (err instanceof ApiError) {
+        return { success: false, message: err.message };
+      }
+      return { success: false, message: 'Terjadi kesalahan. Silakan coba lagi.' };
     }
-
-    const users = ensureDefaultUsers(JSON.parse(localStorage.getItem(USERS_KEY) || '[]'));
-    const normalizedEmail = profile.email.trim().toLowerCase();
-    const existingUser = users.find(
-      (item: any) => item.email.toLowerCase() === normalizedEmail
-    );
-
-    let sessionUser: User;
-
-    if (existingUser) {
-      sessionUser = sanitizeUser(existingUser);
-    } else {
-      const newGoogleUser = {
-        id: `google-${profile.sub}`,
-        name: profile.name?.trim() || normalizedEmail.split('@')[0],
-        email: normalizedEmail,
-        role: 'participant' as const,
-        createdAt: new Date().toISOString(),
-        authProvider: 'google',
-        avatar: profile.picture,
-      };
-
-      users.push(newGoogleUser);
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      sessionUser = sanitizeUser(newGoogleUser);
-    }
-
-    setUser(sessionUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: sessionUser }));
-    return sessionUser;
   };
 
-  const register = async (name: string, email: string, password: string): Promise<User | null> => {
-    const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    const normalizedEmail = email.trim().toLowerCase();
-
-    if (users.some((item: any) => item.email.toLowerCase() === normalizedEmail)) {
-      return null;
+  const promoteUserToAdmin = async (email: string): Promise<boolean> => {
+    try {
+      await authApi.promoteUser(email);
+      return true;
+    } catch {
+      return false;
     }
-
-    const newUser = {
-      id: `user-${Date.now()}`,
-      name: name.trim(),
-      email: normalizedEmail,
-      password,
-      role: 'participant' as const,
-      createdAt: new Date().toISOString(),
-      authProvider: 'local' as const,
-    };
-
-    users.push(newUser);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-
-    const userWithoutPassword = sanitizeUser(newUser);
-    setUser(userWithoutPassword);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: userWithoutPassword }));
-    return userWithoutPassword;
   };
 
-  const logout = () => {
+  const approveUser = async (email: string): Promise<boolean> => {
+    try {
+      await authApi.approveUser(email);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const rejectUser = async (email: string): Promise<boolean> => {
+    try {
+      await authApi.rejectUser(email);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const changePassword = async (
+    email: string,
+    newPassword: string,
+    currentPassword?: string
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await authApi.changePassword(email, newPassword, currentPassword);
+      return { success: true, message: res.message };
+    } catch (err) {
+      if (err instanceof ApiError) {
+        return { success: false, message: err.message };
+      }
+      return { success: false, message: 'Terjadi kesalahan saat mengubah password.' };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // ignore
+    }
     setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
   };
 
   return (
@@ -195,8 +139,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         canAccessAdmin: user?.role === 'admin' || user?.role === 'editor',
         login,
-        loginWithGoogle,
         register,
+        promoteUserToAdmin,
+        approveUser,
+        rejectUser,
+        changePassword,
         logout,
       }}
     >

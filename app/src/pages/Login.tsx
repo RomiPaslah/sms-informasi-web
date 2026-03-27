@@ -1,21 +1,19 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { getGoogleClientId } from '@/lib/google-auth';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const { login, loginWithGoogle } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
-  const isGoogleConfigured = !!getGoogleClientId();
 
   const validateForm = () => {
     const nextErrors: { email?: string; password?: string } = {};
@@ -39,42 +37,27 @@ export function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsPendingApproval(false);
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
     try {
-      const loggedInUser = await login(email, password);
-      if (loggedInUser) {
-        navigate(loggedInUser.role === 'participant' ? '/' : '/admin');
+      const result = await login(email, password);
+      if (result.user) {
+        navigate(result.user.role === 'participant' ? '/' : '/admin');
       } else {
-        setError('Email atau password salah');
+        if (result.error?.includes('belum disetujui') || result.error?.includes('PENDING')) {
+          setIsPendingApproval(true);
+        } else {
+          setError(result.error || 'Email atau password salah.');
+        }
       }
     } catch {
       setError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setError('');
-    setIsGoogleLoading(true);
-
-    try {
-      const loggedInUser = await loginWithGoogle();
-      if (loggedInUser) {
-        navigate(loggedInUser.role === 'participant' ? '/' : '/admin');
-      } else {
-        setError('Login Google gagal. Pastikan email Google Anda sudah terverifikasi.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login Google gagal.');
-    } finally {
-      setIsGoogleLoading(false);
     }
   };
 
@@ -91,20 +74,42 @@ export function Login() {
 
         <div className="text-center">
           <img src="/images/sms-logo.png" alt="SMS Logo" className="h-16 sm:h-20 w-auto mx-auto" />
-          <h2 className="mt-4 sm:mt-6 text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Login Akun</h2>
+          <h2 className="mt-4 sm:mt-6 text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            Login Akun
+          </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 px-2">
             Masuk untuk membaca, memberi reaksi, berkomentar, atau mengelola konten sesuai akses akun Anda
           </p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {/* Error message */}
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
 
+          {/* Pending approval notice */}
+          {isPendingApproval && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-4 py-4 rounded-xl">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">
+                    Akun Menunggu Persetujuan
+                  </p>
+                  <p className="mt-1 text-amber-700 dark:text-amber-400 text-sm">
+                    Pendaftaran Anda telah diterima, namun akun masih menunggu persetujuan dari Admin Utama. 
+                    Silakan coba login kembali setelah akun Anda disetujui.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
+            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email
@@ -119,9 +124,7 @@ export function Login() {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    if (fieldErrors.email) {
-                      setFieldErrors((prev) => ({ ...prev, email: undefined }));
-                    }
+                    if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: undefined }));
                   }}
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
                   placeholder="nama@email.com"
@@ -130,6 +133,7 @@ export function Login() {
               {fieldErrors.email && <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>}
             </div>
 
+            {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Password
@@ -144,12 +148,10 @@ export function Login() {
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    if (fieldErrors.password) {
-                      setFieldErrors((prev) => ({ ...prev, password: undefined }));
-                    }
+                    if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: undefined }));
                   }}
                   className="w-full pl-12 pr-12 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
-                  placeholder="********"
+                  placeholder="••••••••"
                 />
                 <button
                   type="button"
@@ -163,40 +165,30 @@ export function Login() {
             </div>
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={isLoading}
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-[#d90429] hover:bg-[#ef233c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#d90429] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {isLoading ? 'Memuat...' : 'Login'}
-          </button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-gray-700" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-gray-50 px-3 text-gray-500 dark:bg-gray-900 dark:text-gray-400">
-                atau
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Memuat...
               </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={!isGoogleConfigured || isGoogleLoading}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          >
-            <span className="text-base font-bold text-[#4285F4]">G</span>
-            {isGoogleLoading ? 'Menghubungkan Google...' : 'Masuk dengan Google'}
+            ) : (
+              'Login'
+            )}
           </button>
 
-          {!isGoogleConfigured && (
-            <p className="text-center text-xs text-amber-600 dark:text-amber-400">
-              Atur `VITE_GOOGLE_CLIENT_ID` agar login Google aktif.
+          {/* Info box */}
+          <div className="p-4 rounded-xl border border-blue-100 bg-blue-50 text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800">
+            <p className="font-medium mb-1">ℹ️ Sistem Verifikasi Manual</p>
+            <p className="text-xs leading-relaxed">
+              Semua pendaftaran akun baru diverifikasi secara manual oleh Admin Utama sebelum bisa login. 
+              Ini memastikan keamanan dan kualitas komunitas SMS.
             </p>
-          )}
+          </div>
 
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">

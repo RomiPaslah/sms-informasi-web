@@ -3,11 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Moon, Sun, User, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useSiteContent } from '@/context/SiteContentContext';
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isAuthenticated, logout, canAccessAdmin } = useAuth();
+  const { homeContent } = useSiteContent();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -23,13 +25,15 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
-    { name: 'Beranda', href: '/' },
-    { name: 'Berita', href: '/berita' },
-    { name: 'Tentang', href: '/#about' },
-    { name: 'Visi & Misi', href: '/#vision' },
-    { name: 'Kontak', href: '/#contact' },
-  ];
+  const navLinks = homeContent?.navLinks?.length
+    ? homeContent.navLinks
+    : [
+        { id: 'nav-beranda', name: 'Beranda', href: '/' },
+        { id: 'nav-berita', name: 'Berita', href: '/berita' },
+        { id: 'nav-tentang', name: 'Tentang', href: '/#about' },
+        { id: 'nav-visi', name: 'Visi & Misi', href: '/#vision' },
+        { id: 'nav-kontak', name: 'Kontak', href: '/#contact' },
+      ];
 
   const navigateToLink = (href: string) => {
     if (!href.startsWith('/#')) {
@@ -137,11 +141,11 @@ export function Navbar() {
           </div>
         </div>
 
-        <div className={`lg:hidden overflow-hidden transition-all duration-500 ${isMobileMenuOpen ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-4 space-y-2">
+        <div className={`lg:hidden overflow-hidden transition-all duration-500 ${isMobileMenuOpen ? 'max-h-[calc(100vh-120px)] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-4 space-y-2 max-h-[calc(100vh-170px)] overflow-y-auto">
             {navLinks.map((link) => (
               <Link
-                key={link.name}
+                key={(link as any).id ?? link.name}
                 to={link.href}
                 onClick={(e) => {
                   if (link.href.startsWith('/#')) {

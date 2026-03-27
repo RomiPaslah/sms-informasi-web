@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Globe, Mail, ExternalLink, MessageCircle } from 'lucide-react';
+import { useSiteContent } from '@/context/SiteContentContext';
 
 const Contact = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -23,32 +24,47 @@ const Contact = () => {
     return () => observer.disconnect();
   }, []);
 
-  const contacts = [
-    {
-      icon: MessageCircle,
-      title: 'WhatsApp',
-      info: '0821-1966-7132',
-      cta: 'Hubungi Sekarang',
-      href: 'https://wa.me/6282119667132',
-      featured: false
-    },
-    {
-      icon: Globe,
-      title: 'Website',
-      info: 'www.sinergimudastrategis.com',
-      cta: 'Kunjungi Website',
-      href: 'https://www.sinergimudastrategis.com',
-      featured: true
-    },
-    {
-      icon: Mail,
-      title: 'Email',
-      info: 'info@sinergimudastrategis.com',
-      cta: 'Kirim Email',
-      href: 'mailto:info@sinergimudastrategis.com',
-      featured: false
-    }
-  ];
+  const { homeContent } = useSiteContent();
+
+  const contacts = homeContent?.contacts?.length
+    ? homeContent.contacts.map((item) => ({
+        icon:
+          item.title.toLowerCase().includes('whatsapp') ? MessageCircle :
+          item.title.toLowerCase().includes('website') ? Globe :
+          item.title.toLowerCase().includes('email') ? Mail :
+          MessageCircle,
+        title: item.title,
+        info: item.value,
+        cta: item.title === 'Email' ? 'Kirim Email' : item.title === 'WhatsApp' ? 'Hubungi Sekarang' : 'Kunjungi',
+        href: item.link,
+        featured: !!item.highlight,
+      }))
+    : [
+        {
+          icon: MessageCircle,
+          title: 'WhatsApp',
+          info: '0821-1966-7132',
+          cta: 'Hubungi Sekarang',
+          href: 'https://wa.me/6282119667132',
+          featured: false,
+        },
+        {
+          icon: Globe,
+          title: 'Website',
+          info: 'www.sinergimudastrategis.com',
+          cta: 'Kunjungi Website',
+          href: 'https://www.sinergimudastrategis.com',
+          featured: true,
+        },
+        {
+          icon: Mail,
+          title: 'Email',
+          info: 'info@sinergimudastrategis.com',
+          cta: 'Kirim Email',
+          href: 'mailto:info@sinergimudastrategis.com',
+          featured: false,
+        },
+      ];
 
   return (
     <section
@@ -128,7 +144,7 @@ const Contact = () => {
                 <h3 className="text-xl font-bold text-black text-center mb-2">
                   {contact.title}
                 </h3>
-                <p className="text-gray-600 text-center mb-6 text-sm break-all">
+                <p className="text-gray-600 text-center mb-6 text-sm break-words whitespace-normal truncate-none">
                   {contact.info}
                 </p>
 

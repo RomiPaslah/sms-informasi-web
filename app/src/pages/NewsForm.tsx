@@ -140,7 +140,11 @@ export function NewsForm() {
   };
 
   const articleStatus = useMemo(() => {
-    if (!formData.title.trim() && !formData.excerpt.trim() && !formData.content.trim()) {
+    const title = formData.title || '';
+    const excerpt = formData.excerpt || '';
+    const content = formData.content || '';
+
+    if (!title.trim() && !excerpt.trim() && !content.trim()) {
       return 'Mulai isi form untuk melihat preview artikel.';
     }
 
@@ -155,22 +159,27 @@ export function NewsForm() {
     e.preventDefault();
     setError('');
 
-    if (!formData.title.trim()) {
+    const title = formData.title || '';
+    const content = formData.content || '';
+    const excerpt = formData.excerpt || '';
+    const image = formData.image || '';
+
+    if (!title.trim()) {
       setError('Judul berita wajib diisi');
       return;
     }
 
-    if (!formData.content.trim()) {
+    if (!content.trim()) {
       setError('Konten berita wajib diisi');
       return;
     }
 
-    if (!formData.excerpt.trim()) {
+    if (!excerpt.trim()) {
       setError('Ringkasan berita wajib diisi');
       return;
     }
 
-    if (!formData.image.trim()) {
+    if (!image.trim()) {
       setError('Gambar berita wajib dipilih atau diisi URL-nya');
       return;
     }
@@ -180,13 +189,13 @@ export function NewsForm() {
     try {
       const payload = {
         ...formData,
-        published: saveMode === 'publish',
+        published: user?.role === 'admin' ? true : saveMode === 'publish',
       };
 
       if (isEditing && id) {
-        updateNews(id, payload);
+        await updateNews(id, payload);
       } else {
-        createNews(payload, user.name);
+        await createNews(payload, user.name);
       }
       navigate('/admin');
     } catch {
@@ -459,10 +468,10 @@ export function NewsForm() {
             <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Checklist Editor</h3>
               <div className="mt-4 space-y-3 text-sm">
-                <ChecklistItem label="Judul terisi" checked={!!formData.title.trim()} />
-                <ChecklistItem label="Ringkasan terisi" checked={!!formData.excerpt.trim()} />
-                <ChecklistItem label="Konten terisi" checked={!!formData.content.trim()} />
-                <ChecklistItem label="Media utama tersedia" checked={!!formData.image.trim()} />
+                <ChecklistItem label="Judul terisi" checked={!!(formData.title || '').trim()} />
+                <ChecklistItem label="Ringkasan terisi" checked={!!(formData.excerpt || '').trim()} />
+                <ChecklistItem label="Konten terisi" checked={!!(formData.content || '').trim()} />
+                <ChecklistItem label="Media utama tersedia" checked={!!(formData.image || '').trim()} />
                 <ChecklistItem label="Status artikel dipilih" checked={true} />
               </div>
             </div>

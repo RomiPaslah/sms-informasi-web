@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, CheckCircle, Eye, EyeOff, Lock, Mail, User, Clock, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { getGoogleClientId } from '@/lib/google-auth';
+
+type RegisterState = 'form' | 'success';
 
 export function Register() {
+  const [pageState, setPageState] = useState<RegisterState>('form');
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,38 +16,18 @@ export function Register() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
-  const { register, loginWithGoogle } = useAuth();
-  const navigate = useNavigate();
-  const isGoogleConfigured = !!getGoogleClientId();
+  const { register } = useAuth();
 
   const validateForm = () => {
     const nextErrors: Record<string, string> = {};
 
-    if (!name.trim()) {
-      nextErrors.name = 'Nama lengkap wajib diisi';
-    } else if (name.trim().length < 3) {
-      nextErrors.name = 'Nama minimal 3 karakter';
-    }
-
-    if (!email.trim()) {
-      nextErrors.email = 'Email wajib diisi';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      nextErrors.email = 'Format email belum valid';
-    }
-
-    if (!password) {
-      nextErrors.password = 'Password wajib diisi';
-    } else if (password.length < 6) {
-      nextErrors.password = 'Password minimal 6 karakter';
-    }
-
-    if (!confirmPassword) {
-      nextErrors.confirmPassword = 'Konfirmasi password wajib diisi';
-    } else if (password !== confirmPassword) {
-      nextErrors.confirmPassword = 'Password tidak cocok';
-    }
+    if (!name.trim() || name.trim().length < 3) nextErrors.name = 'Nama minimal 3 karakter';
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      nextErrors.email = 'Format email tidak valid';
+    if (!password || password.length < 6) nextErrors.password = 'Password minimal 6 karakter';
+    if (password !== confirmPassword) nextErrors.confirmPassword = 'Password tidak cocok';
 
     setFieldErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -54,18 +37,17 @@ export function Register() {
     e.preventDefault();
     setError('');
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
     try {
-      const registeredUser = await register(name, email, password);
-      if (registeredUser) {
-        navigate('/');
+      const result = await register(name, email, password);
+      if (result.success) {
+        setRegisteredEmail(email);
+        setPageState('success');
       } else {
-        setError('Email sudah terdaftar');
+        setError(result.message || 'Terjadi kesalahan. Silakan coba lagi.');
       }
     } catch {
       setError('Terjadi kesalahan. Silakan coba lagi.');
@@ -74,24 +56,77 @@ export function Register() {
     }
   };
 
-  const handleGoogleRegister = async () => {
-    setError('');
-    setIsGoogleLoading(true);
+  // ── Success Page ─────────────────────────────────────────────────────────────
+  if (pageState === 'success') {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-8 px-4">
+        <div className="max-w-md w-full space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 text-center">
+            {/* Success icon */}
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
+            </div>
 
-    try {
-      const registeredUser = await loginWithGoogle();
-      if (registeredUser) {
-        navigate('/');
-      } else {
-        setError('Masuk dengan Google gagal. Pastikan email Google Anda terverifikasi.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Masuk dengan Google gagal.');
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Pendaftaran Berhasil!
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">
+              Akun dengan email <strong className="text-gray-900 dark:text-white">{registeredEmail}</strong> telah berhasil didaftarkan.
+            </p>
 
+            {/* Steps */}
+            <div className="space-y-3 text-left mb-6">
+              <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-green-800 dark:text-green-300">Langkah 1 — Selesai</p>
+                  <p className="text-xs text-green-700 dark:text-green-400">Akun Anda berhasil didaftarkan ke sistem</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700">
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Langkah 2 — Menunggu</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    Admin Utama akan meninjau dan menyetujui pendaftaran Anda. Proses ini biasanya
+                    memakan waktu 1×24 jam.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Langkah 3</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-400">
+                    Setelah disetujui, Anda dapat login dan bergabung dengan komunitas SMS
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <Link
+                to="/login"
+                className="w-full flex justify-center py-3 px-4 bg-[#d90429] text-white rounded-xl font-medium hover:bg-[#ef233c] transition-colors"
+              >
+                Pergi ke Halaman Login
+              </Link>
+              <Link
+                to="/"
+                className="w-full flex justify-center py-3 px-4 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Kembali ke Beranda
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Registration Form ─────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -111,6 +146,15 @@ export function Register() {
           </p>
         </div>
 
+        {/* Info banner */}
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+          <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-800 dark:text-blue-300">
+            Semua akun baru diverifikasi oleh <strong>Admin Utama</strong> sebelum bisa digunakan.
+            Ini menjaga kualitas dan keamanan komunitas SMS.
+          </p>
+        </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
@@ -119,6 +163,7 @@ export function Register() {
           )}
 
           <div className="space-y-4">
+            {/* Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Nama Lengkap
@@ -133,9 +178,7 @@ export function Register() {
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
-                    if (fieldErrors.name) {
-                      setFieldErrors((prev) => ({ ...prev, name: '' }));
-                    }
+                    if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: '' }));
                   }}
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
                   placeholder="Nama Anda"
@@ -144,6 +187,7 @@ export function Register() {
               {fieldErrors.name && <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>}
             </div>
 
+            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email
@@ -158,9 +202,7 @@ export function Register() {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    if (fieldErrors.email) {
-                      setFieldErrors((prev) => ({ ...prev, email: '' }));
-                    }
+                    if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: '' }));
                   }}
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
                   placeholder="email@anda.com"
@@ -169,6 +211,7 @@ export function Register() {
               {fieldErrors.email && <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>}
             </div>
 
+            {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Password
@@ -183,12 +226,10 @@ export function Register() {
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    if (fieldErrors.password) {
-                      setFieldErrors((prev) => ({ ...prev, password: '' }));
-                    }
+                    if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: '' }));
                   }}
                   className="w-full pl-12 pr-12 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
-                  placeholder="********"
+                  placeholder="Min. 6 karakter"
                 />
                 <button
                   type="button"
@@ -201,6 +242,7 @@ export function Register() {
               {fieldErrors.password && <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>}
             </div>
 
+            {/* Confirm Password */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Konfirmasi Password
@@ -215,12 +257,10 @@ export function Register() {
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
-                    if (fieldErrors.confirmPassword) {
-                      setFieldErrors((prev) => ({ ...prev, confirmPassword: '' }));
-                    }
+                    if (fieldErrors.confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: '' }));
                   }}
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
-                  placeholder="********"
+                  placeholder="Ulangi password"
                 />
               </div>
               {fieldErrors.confirmPassword && (
@@ -234,35 +274,15 @@ export function Register() {
             disabled={isLoading}
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-[#d90429] hover:bg-[#ef233c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#d90429] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {isLoading ? 'Mendaftar...' : 'Daftar'}
-          </button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-gray-700" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-gray-50 px-3 text-gray-500 dark:bg-gray-900 dark:text-gray-400">
-                atau
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Mendaftar...
               </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGoogleRegister}
-            disabled={!isGoogleConfigured || isGoogleLoading}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          >
-            <span className="text-base font-bold text-[#4285F4]">G</span>
-            {isGoogleLoading ? 'Menghubungkan Google...' : 'Daftar dengan Google'}
+            ) : (
+              'Daftar Sekarang'
+            )}
           </button>
-
-          {!isGoogleConfigured && (
-            <p className="text-center text-xs text-amber-600 dark:text-amber-400">
-              Atur `VITE_GOOGLE_CLIENT_ID` agar Google Sign-In aktif.
-            </p>
-          )}
 
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">

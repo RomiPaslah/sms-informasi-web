@@ -1,0 +1,21 @@
+# API Security Headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
+
+# Only allow .php files in /api/
+<Files ~ "^(?!.*\.php$).*$">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Allow PHP files
+<Files ~ "\.php$">
+    Order allow,deny
+    Allow from all
+</Files>
