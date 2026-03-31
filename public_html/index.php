@@ -43,26 +43,37 @@ if (preg_match('#^/berita/([a-fA-F0-9\-]+)/?$#', $path, $matches)) {
                         $desc = htmlspecialchars($news['excerpt'], ENT_QUOTES);
                         $image = htmlspecialchars($news['image'], ENT_QUOTES);
                         
-                        // Pastikan image path absolut jika relatif
-                        if (strpos($image, 'http') !== 0) {
+                        // WhatsApp/FB tidak mendukung base64 "data:image/...", kita pakai renderer PHP dinamis:
+                        if (strpos($image, 'data:image') === 0) {
                             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-                            $image = $protocol . $_SERVER['HTTP_HOST'] . (strpos($image, '/') === 0 ? '' : '/') . $image;
+                            $image = rtrim($protocol . $_SERVER['HTTP_HOST'], '/') . '/api/image.php?id=' . urlencode($newsId);
+                        } else if (strpos($image, 'http') !== 0 && !empty($image)) {
+                            // Jika format folder /uploads biasa
+                            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+                            $image = rtrim($protocol . $_SERVER['HTTP_HOST'], '/') . '/' . ltrim($image, '/');
                         }
+                        
+                        // Buat Canonical URL Dinamis
+                        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+                        $currentUrl = rtrim($protocol . $_SERVER['HTTP_HOST'], '/') . "/berita/" . $newsId;
                         
                         // Replace standard tags
                         $html = str_replace('<title>Sinergi Muda Strategis - SMS</title>', "<title>$title | SMS</title>", $html);
                         $html = preg_replace('/<meta\s+name="title"\s+content="[^"]*"\s*\/?>/i', "<meta name=\"title\" content=\"$title\" />", $html);
                         $html = preg_replace('/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i', "<meta name=\"description\" content=\"$desc\" />", $html);
+                        $html = preg_replace('/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i', "<link rel=\"canonical\" href=\"$currentUrl\" />", $html);
                         
                         // Open Graph
                         $html = preg_replace('/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i', "<meta property=\"og:title\" content=\"$title\" />", $html);
                         $html = preg_replace('/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i', "<meta property=\"og:description\" content=\"$desc\" />", $html);
                         $html = preg_replace('/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/i', "<meta property=\"og:image\" content=\"$image\" />", $html);
+                        $html = preg_replace('/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i', "<meta property=\"og:url\" content=\"$currentUrl\" />", $html);
                         
                         // Twitter
                         $html = preg_replace('/<meta\s+property="twitter:title"\s+content="[^"]*"\s*\/?>/i', "<meta property=\"twitter:title\" content=\"$title\" />", $html);
                         $html = preg_replace('/<meta\s+property="twitter:description"\s+content="[^"]*"\s*\/?>/i', "<meta property=\"twitter:description\" content=\"$desc\" />", $html);
                         $html = preg_replace('/<meta\s+property="twitter:image"\s+content="[^"]*"\s*\/?>/i', "<meta property=\"twitter:image\" content=\"$image\" />", $html);
+                        $html = preg_replace('/<meta\s+property="twitter:url"\s+content="[^"]*"\s*\/?>/i', "<meta property=\"twitter:url\" content=\"$currentUrl\" />", $html);
                     }
                     $stmt->close();
                 }

@@ -30,13 +30,6 @@ if ($endpoint === 'comments') {
 // ── Comment Handlers ──────────────────────────────────────────────────────────
 
 function handleAddComment(): void {
-    $currentUser = requireAuth();
-
-    // Only approved users can comment
-    if (!$currentUser['approved'] && $currentUser['role'] !== 'admin') {
-        sendJSON(['error' => 'Akun Anda belum disetujui. Tidak bisa berkomentar.'], 403);
-    }
-
     $input   = getInput();
     $newsId  = trim($input['newsId'] ?? '');
     $content = trim($input['content'] ?? '');
@@ -58,14 +51,72 @@ function handleAddComment(): void {
     }
     $chkStmt->close();
 
+    // Try to get current user (optional - untuk differentiate guest vs registered)
+    $currentUser = null;
+    try {
+        $currentUser = getAuthUser();
+    } catch (Exception $e) {
+        // Not logged in - will be guest comment
+    }
+
+    if ($currentUser) {
+        // Registered user comment
+        handleAddUserComment($input, $newsId, $content, $db, $currentUser);
+    } else {
+        // Guest comment
+        handleAddGuestComment($input, $newsId, $content, $db);
+    }
+}
+
+function handleAddGuestComment(array $input, string $newsId, string $content, mysqli $db): void {
+    $userName  = trim($input['userName'] ?? '');
+    $guestEmail = trim($input['guestEmail'] ?? '');
+
+    if (!$userName)  sendJSON(['error' => 'Nama diperlukan'], 400);
+    if (!$guestEmail) sendJSON(['error' => 'Email diperlukan'], 400);
+
+    // Basic email validation
+    if (!filter_var($guestEmail, FILTER_VALIDATE_EMAIL)) {
+        sendJSON(['error' => 'Email tidak valid'], 400);
+    }
+
+    $commentId = generateUUID();
+
+    $stmt = $db->prepare(
+        'INSERT INTO comments (id, news_id, user_id, user_name, guest_email, content) VALUES (?, ?, NULL, ?, ?, ?)'
+    );
+    $stmt->bind_param('sssss', $commentId, $newsId, $userName, $guestEmail, $content);
+    $stmt->execute();
+    $stmt->close();
+    $db->close();
+
+    sendJSON([
+        'success' => true,
+        'comment' => [
+            'id'        => $commentId,
+            'userName'  => $userName,
+            'guestEmail' => $guestEmail,
+            'content'   => $content,
+            'createdAt' => date('Y-m-d H:i:s'),
+        ],
+    ], 201);
+}
+
+function handleAddUserComment(array $input, string $newsId, string $content, mysqli $db, array $currentUser): void {
+    // Only approved users can comment
+    if (!$currentUser['approved'] && $currentUser['role'] !== 'admin') {
+        sendJSON(['error' => 'Akun Anda belum disetujui. Tidak bisa berkomentar.'], 403);
+    }
+
     $commentId = generateUUID();
     $userId    = (int)$currentUser['id'];
     $userName  = $currentUser['name'];
+    $userEmail = $currentUser['email'];
 
     $stmt = $db->prepare(
-        'INSERT INTO comments (id, news_id, user_id, user_name, content) VALUES (?, ?, ?, ?, ?)'
+        'INSERT INTO comments (id, news_id, user_id, user_name, user_email, content) VALUES (?, ?, ?, ?, ?, ?)'
     );
-    $stmt->bind_param('sssss', $commentId, $newsId, $userId, $userName, $content);
+    $stmt->bind_param('ssisss', $commentId, $newsId, $userId, $userName, $userEmail, $content);
     $stmt->execute();
     $stmt->close();
     $db->close();
@@ -76,6 +127,7 @@ function handleAddComment(): void {
             'id'        => $commentId,
             'userId'    => (string)$userId,
             'userName'  => $userName,
+            'userEmail' => $userEmail,
             'content'   => $content,
             'createdAt' => date('Y-m-d H:i:s'),
         ],
@@ -83,11 +135,13 @@ function handleAddComment(): void {
 }
 
 function handleDeleteComment(string $id): void {
-    $currentUser = requireAuth();
     if (!$id) sendJSON(['error' => 'ID komentar diperlukan'], 400);
 
-    $db   = getDB();
-    $stmt = $db->prepare('SELECT id, user_id FROM comments WHERE id = ? LIMIT 1');
+    $input = getInput();
+    $db    = getDB();
+    
+    // Get the comment
+    $stmt = $db->prepare('SELECT id, user_id, guest_email FROM comments WHERE id = ? LIMIT 1');
     $stmt->bind_param('s', $id);
     $stmt->execute();
     $comment = $stmt->get_result()->fetch_assoc();
@@ -98,10 +152,33 @@ function handleDeleteComment(string $id): void {
         sendJSON(['error' => 'Komentar tidak ditemukan'], 404);
     }
 
-    // Only admin or the owner can delete
-    $isOwner = (string)$comment['user_id'] === (string)$currentUser['id'];
-    $isAdmin = in_array($currentUser['role'], ['admin', 'editor']);
-    if (!$isOwner && !$isAdmin) {
+    // Try to get current user
+    $currentUser = null;
+    $canDelete = false;
+    
+    try {
+        $currentUser = getAuthUser();
+        
+        // Admin atau editor bisa delete semua
+        if (in_array($currentUser['role'], ['admin', 'editor'])) {
+            $canDelete = true;
+        }
+        
+        // Owner dapat delete komentar mereka
+        if ((int)$comment['user_id'] === (int)$currentUser['id']) {
+            $canDelete = true;
+        }
+    } catch (Exception $e) {
+        // Tidak login - cek apakah guest dan ada email
+        if ($comment['guest_email']) {
+            $providedEmail = trim($input['guestEmail'] ?? '');
+            if ($providedEmail === $comment['guest_email']) {
+                $canDelete = true;
+            }
+        }
+    }
+
+    if (!$canDelete) {
         $db->close();
         sendJSON(['error' => 'Tidak memiliki izin untuk menghapus komentar ini'], 403);
     }

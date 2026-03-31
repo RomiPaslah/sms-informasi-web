@@ -1,53 +1,74 @@
-import { useEffect } from 'react';
 import { useSiteContent } from '@/context/SiteContentContext';
-import type { AdSettings } from '@/types';
+import type { ContentAd } from '@/types';
 
-declare global {
-  interface Window {
-    adsbygoogle: any[];
-  }
+interface AdDisplayProps {
+  position: 'header' | 'sidebar' | 'betweenContent' | 'footer';
+  className?: string;
 }
 
-export function Ad({ position }: { position: keyof AdSettings['adPositions'] }) {
+export function Ad({ position, className = '' }: AdDisplayProps) {
   const { adSettings } = useSiteContent();
 
-  useEffect(() => {
-    if (adSettings.enabled && adSettings.adType === 'adsense' && window.adsbygoogle) {
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (err) {
-        console.error('AdSense error:', err);
-      }
-    }
-  }, [adSettings]);
+  if (!adSettings?.enabled) return null;
 
-  if (!adSettings.enabled || !adSettings.adPositions[position as keyof typeof adSettings.adPositions]) {
-    return null;
-  }
+  const positionConfig = adSettings.positions?.[position];
+  if (!positionConfig?.enabled) return null;
 
-  if (adSettings.adType === 'adsense' && adSettings.adsensePublisherId) {
-    return (
-      <div className="ad-container my-4">
-        <ins
-          className="adsbygoogle"
-          style={{ display: 'block' }}
-          data-ad-client={`ca-${adSettings.adsensePublisherId}`}
-          data-ad-slot="1234567890" // Placeholder slot ID
-          data-ad-format="auto"
-          data-full-width-responsive="true"
-        />
+  // Filter ads that are enabled and assigned to this position
+  const adsForPosition = adSettings.ads?.filter(
+    (ad: ContentAd) => ad.enabled && ad.positions?.includes(position)
+  ) || [];
+
+  if (adsForPosition.length === 0) return null;
+
+  return (
+    <div
+      className={`overflow-hidden rounded-lg ${className}`}
+      style={{
+        width: positionConfig.width || '100%',
+        maxHeight: positionConfig.maxHeight || 'auto'
+      }}
+    >
+      <div className="space-y-2">
+        {adsForPosition.map((ad: ContentAd) => (
+          <a
+            key={ad.id}
+            href={ad.link || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block group overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700 hover:shadow-md transition-shadow"
+            style={{
+              width: ad.width || '100%',
+              height: ad.height || 'auto'
+            }}
+          >
+            {ad.image && (
+              <div className="relative overflow-hidden h-40">
+                <img
+                  src={ad.image}
+                  alt={ad.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
+              </div>
+            )}
+            <div className="p-3">
+              {ad.title && (
+                <h3 className="font-medium text-sm text-gray-900 dark:text-white line-clamp-1">
+                  {ad.title}
+                </h3>
+              )}
+              {ad.description && (
+                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                  {ad.description}
+                </p>
+              )}
+            </div>
+          </a>
+        ))}
       </div>
-    );
-  }
-
-  if (adSettings.adType === 'custom' && adSettings.customAdHtml) {
-    return (
-      <div
-        className="ad-container my-4"
-        dangerouslySetInnerHTML={{ __html: adSettings.customAdHtml }}
-      />
-    );
-  }
+    </div>
+  );
+}
 
   return null;
 }

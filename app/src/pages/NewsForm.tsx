@@ -59,6 +59,7 @@ export function NewsForm() {
     content: '',
     excerpt: '',
     image: SAMPLE_IMAGES[0],
+    video_url: '',
     category: CATEGORIES[0],
     published: true,
   });
@@ -82,6 +83,7 @@ export function NewsForm() {
           content: news.content,
           excerpt: news.excerpt,
           image: news.image,
+          video_url: news.video_url || '',
           category: news.category,
           published: news.published,
         });
@@ -366,6 +368,20 @@ export function NewsForm() {
                 <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
                   <img src={formData.image} alt="Preview gambar utama" className="h-56 w-full object-cover" />
                 </div>
+
+                <Field label="URL Video (Opsional)">
+                  <input
+                    type="url"
+                    name="video_url"
+                    value={formData.video_url || ''}
+                    onChange={handleChange}
+                    placeholder="https://youtube.com/embed/... atau https://..."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#d90429] transition-all"
+                  />
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Link video YouTube, Vimeo, atau video hosting lainnya. Biarkan kosong jika tidak ada video.
+                  </p>
+                </Field>
               </EditorSection>
 
               <EditorSection

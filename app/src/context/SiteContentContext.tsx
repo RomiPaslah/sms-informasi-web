@@ -48,14 +48,12 @@ const DEFAULT_HOME_CONTENT: HomeContent = {
 
 const DEFAULT_AD_SETTINGS: AdSettings = {
   enabled: false,
-  adType: 'adsense',
-  adsensePublisherId: '',
-  customAdHtml: '',
-  adPositions: {
-    header: false,
-    sidebar: false,
-    footer: false,
-    betweenContent: false,
+  ads: [],
+  positions: {
+    header: { enabled: false, width: '1200px', maxHeight: '120px' },
+    sidebar: { enabled: false, width: '300px', maxHeight: '500px' },
+    betweenContent: { enabled: false, width: '600px', maxHeight: '300px' },
+    footer: { enabled: false, width: '1200px', maxHeight: '150px' },
   },
 };
 

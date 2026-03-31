@@ -4,8 +4,10 @@ export interface News {
   content: string;
   excerpt: string;
   image: string;
+  video_url?: string;
   category: string;
   author: string;
+  views: number;
   createdAt: string;
   updatedAt: string;
   published: boolean;
@@ -29,14 +31,17 @@ export interface NewsFormData {
   content: string;
   excerpt: string;
   image: string;
+  video_url?: string;
   category: string;
   published: boolean;
 }
 
 export interface NewsComment {
   id: string;
-  userId: string;
+  userId?: string;
   userName: string;
+  userEmail?: string;
+  guestEmail?: string;
   content: string;
   createdAt: string;
 }
@@ -82,13 +87,22 @@ export interface HomeContent {
 
 export interface AdSettings {
   enabled: boolean;
-  adType: 'custom' | 'adsense';
-  adsensePublisherId?: string;
-  customAdHtml?: string;
-  adPositions: {
-    header: boolean;
-    sidebar: boolean;
-    footer: boolean;
-    betweenContent: boolean;
-  };
+  ads: ContentAd[];
+  positions: Record<string, {
+    enabled: boolean;
+    width: number | string;
+    maxHeight: number | string;
+  }>;
+}
+
+export interface ContentAd {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  link: string;
+  positions: string[];
+  enabled: boolean;
+  width: number | string;
+  height: number | string;
 }

@@ -1,13 +1,42 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNews } from '@/context/NewsContext';
 import { NewsEngagement } from '@/components/news/NewsEngagement';
+import { GuestCommentForm } from '@/components/news/GuestCommentForm';
+import { Ad } from '@/components/Ad';
+
+/** Injects / updates a <meta> tag in <head> by property or name attribute */
+function setMeta(attr: 'property' | 'name', key: string, content: string) {
+  let el = document.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null;
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
+/** Restore default meta values when leaving the page */
+function resetMeta() {
+  const defaults: [string, string][] = [
+    ['og:title', 'SMS - Sinergi Muda Strategis'],
+    ['og:description', 'Portal berita digital independen untuk pemuda Indonesia.'],
+    ['og:image', `${window.location.origin}/images/sms-logo.png`],
+    ['og:type', 'website'],
+    ['twitter:card', 'summary_large_image'],
+    ['twitter:title', 'SMS - Sinergi Muda Strategis'],
+    ['twitter:description', 'Portal berita digital independen untuk pemuda Indonesia.'],
+    ['twitter:image', `${window.location.origin}/images/sms-logo.png`],
+  ];
+  defaults.forEach(([key, val]) => setMeta('property', key, val));
+  document.title = 'SMS - Sinergi Muda Strategis';
+}
 
 export function NewsDetail() {
   const { id } = useParams<{ id: string }>();
-  const { getNewsById, publishedNews, addComment, isLoading } = useNews();
+  const { getNewsById, publishedNews, addComment, isLoading, incrementNewsView } = useNews();
   const { user, isAuthenticated } = useAuth();
   const [comment, setComment] = useState('');
   const [commentError, setCommentError] = useState('');
@@ -19,6 +48,41 @@ export function NewsDetail() {
     if (!news) return [];
     return [...news.comments].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }, [news]);
+
+  // Inject Open Graph + Twitter Card meta tags for link previews
+  useEffect(() => {
+    if (!news) return;
+
+    // Increment view count when news page loads
+    incrementNewsView(news.id).catch(() => {
+      // Silently fail if increment fails
+    });
+
+    const origin = window.location.origin;
+    const pageUrl = window.location.href;
+    const imageUrl = news.image
+      ? (news.image.startsWith('http') ? news.image : `${origin}${news.image}`)
+      : `${origin}/images/sms-logo.png`;
+    const description = news.excerpt || news.content?.slice(0, 160) || '';
+
+    document.title = `${news.title} | SMS`;
+    setMeta('property', 'og:title', news.title);
+    setMeta('property', 'og:description', description);
+    setMeta('property', 'og:image', imageUrl);
+    setMeta('property', 'og:image:width', '1200');
+    setMeta('property', 'og:image:height', '630');
+    setMeta('property', 'og:url', pageUrl);
+    setMeta('property', 'og:type', 'article');
+    setMeta('property', 'og:site_name', 'Sinergi Muda Strategis');
+    setMeta('property', 'article:author', news.author);
+    setMeta('name', 'twitter:card', 'summary_large_image');
+    setMeta('name', 'twitter:title', news.title);
+    setMeta('name', 'twitter:description', description);
+    setMeta('name', 'twitter:image', imageUrl);
+    setMeta('name', 'description', description);
+
+    return () => resetMeta();
+  }, [news, incrementNewsView]);
 
   if (isLoading) {
     return (
@@ -83,8 +147,8 @@ export function NewsDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-[var(--navbar-height)]">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-[var(--navbar-height)] z-40">
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-20">
           <div className="flex items-center justify-between h-16">
             <Link to="/berita" className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-[#d90429] transition-colors">
@@ -122,6 +186,9 @@ export function NewsDetail() {
               <span className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 {formatDate(news.createdAt)}
+              </span>
+              <span className="flex items-center gap-2 ml-auto bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">
+                <span className="text-xs font-semibold">👁 {news.views.toLocaleString('id-ID')}</span>
               </span>
             </div>
 
@@ -161,12 +228,38 @@ export function NewsDetail() {
           </div>
         </article>
 
+        {/* Ads - Between Content */}
+        <div className="my-8 flex justify-center">
+          <Ad position="betweenContent" className="w-full" />
+        </div>
+
+        {/* Video Section */}
+        {news.video_url && (
+          <section className="mt-10 rounded-2xl bg-white p-6 shadow-lg dark:bg-gray-800 sm:p-8">
+            <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">Video Terkait</h2>
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                className="absolute inset-0 h-full w-full rounded-xl"
+                src={
+                  news.video_url.includes('youtube.com') ? news.video_url
+                  : news.video_url.includes('youtu.be') ? news.video_url
+                  : news.video_url.startsWith('http') ? news.video_url
+                  : `https://www.youtube.com/embed/${news.video_url}`
+                }
+                title="Video artikel"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </section>
+        )}
+
         <section id="komentar" className="mt-10 rounded-2xl bg-white p-6 shadow-lg dark:bg-gray-800 sm:p-8">
           <div className="flex items-center justify-between gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Komentar Peserta</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Diskusi & Komentar</h2>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Hanya pengguna yang sudah daftar yang bisa ikut berdiskusi.
+                Berikan tanggapan Anda tentang artikel ini. Tidak perlu login untuk berkomentar.
               </p>
             </div>
             <div className="rounded-full bg-[#d90429]/10 px-4 py-2 text-sm font-semibold text-[#d90429]">
@@ -174,48 +267,62 @@ export function NewsDetail() {
             </div>
           </div>
 
-          <form onSubmit={handleCommentSubmit} className="mt-6 space-y-3">
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={4}
-              placeholder={isAuthenticated ? 'Tulis komentar Anda tentang berita ini...' : 'Login atau daftar untuk menulis komentar.'}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-            />
-            {commentError && <p className="text-sm text-red-600">{commentError}</p>}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              {!isAuthenticated ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  <Link to="/login" className="text-[#d90429]">Masuk</Link> atau{' '}
-                  <Link to="/register" className="text-[#d90429]">daftar</Link> untuk berkomentar.
+          <div className="mt-8 space-y-8">
+            {/* Guest Comment Form - Always visible */}
+            <GuestCommentForm newsId={news.id} onCommentAdded={() => {}} />
+
+            {/* User Comment Form - Only if logged in */}
+            {isAuthenticated && user && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-900">
+                <h3 className="mb-2 text-lg font-bold text-gray-900 dark:text-white">
+                  Berkomentar sebagai {user.name}
+                </h3>
+                <form onSubmit={handleCommentSubmit} className="space-y-3">
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={3}
+                    placeholder="Bagikan pendapat Anda sebagai pengguna terdaftar..."
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400"
+                  />
+                  {commentError && <p className="text-sm text-red-600">{commentError}</p>}
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#d90429] px-4 py-2 font-medium text-white transition-colors hover:bg-[#ef233c]"
+                  >
+                    Kirim Komentar
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* All Comments */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                {news.comments.length === 0 ? 'Belum Ada Komentar' : 'Komentar Terbaru'}
+              </h3>
+              {sortedComments.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  Jadilah yang pertama memberikan komentar!
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Berkomentar sebagai <span className="font-semibold text-gray-900 dark:text-white">{user?.name}</span>
-                </p>
+                sortedComments.map((item) => (
+                  <article key={item.id} className="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {item.userName}
+                          {item.userId && <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded dark:bg-blue-900/30 dark:text-blue-300">Pengguna Terdaftar</span>}
+                          {item.guestEmail && !item.userId && <span className="ml-2 text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded dark:bg-gray-700 dark:text-gray-300">Pengunjung</span>}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(item.createdAt)}</p>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">{item.content}</p>
+                  </article>
+                ))
               )}
-              <button type="submit" className="rounded-xl bg-[#d90429] px-5 py-3 font-medium text-white transition-colors hover:bg-[#ef233c]">
-                Kirim Komentar
-              </button>
             </div>
-          </form>
-
-          <div className="mt-8 space-y-4">
-            {sortedComments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-300 px-6 py-10 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                Belum ada komentar. Jadilah yang pertama berdiskusi.
-              </div>
-            ) : (
-              sortedComments.map((item) => (
-                <article key={item.id} className="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
-                  <div>
-                    <p className="font-semibold text-gray-900 dark:text-white">{item.userName}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(item.createdAt)}</p>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">{item.content}</p>
-                </article>
-              ))
-            )}
           </div>
         </section>
 

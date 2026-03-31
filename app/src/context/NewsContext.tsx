@@ -23,6 +23,7 @@ interface NewsContextType {
   setReaction: (newsId: string, userId: string, emoji: string) => Promise<void>;
   addComment: (newsId: string, comment: Omit<NewsComment, 'id' | 'createdAt'>) => Promise<boolean>;
   deleteComment: (newsId: string, commentId: string) => Promise<boolean>;
+  incrementNewsView: (newsId: string) => Promise<void>;
   refreshNews: () => Promise<void>;
 }
 
@@ -37,6 +38,7 @@ function apiNewsToNews(apiNews: ApiNews): News {
     image: apiNews.image,
     category: apiNews.category,
     author: apiNews.author,
+    views: apiNews.views ?? 0,
     createdAt: apiNews.createdAt,
     updatedAt: apiNews.updatedAt,
     published: apiNews.published,
@@ -138,9 +140,26 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const setReaction = async (newsId: string, userId: string, emoji: string): Promise<void> => {
+  const setReaction = async (
+    newsId: string, 
+    userId: string, 
+    emoji: string,
+    guestId?: string
+  ): Promise<void> => {
     try {
-      const { emoji: newEmoji } = await reactionsApi.toggle(newsId, emoji);
+      const payload = { newsId, emoji };
+      if (userId && userId.startsWith('guest_')) {
+        // Guest reaction
+        Object.assign(payload, { guestId: userId });
+      } else if (guestId) {
+        // Explicitly passed guestId
+        Object.assign(payload, { guestId });
+      } else {
+        // User reaction
+        Object.assign(payload, { userId });
+      }
+      
+      const { emoji: newEmoji } = await reactionsApi.toggle(newsId, emoji, payload);
       setNews((prev) =>
         prev.map((item) =>
           item.id === newsId
@@ -148,7 +167,7 @@ export function NewsProvider({ children }: { children: ReactNode }) {
                 ...item,
                 reactions: {
                   ...item.reactions,
-                  [userId]: newEmoji,
+                  [userId || guestId || '']: newEmoji,
                 },
               }
             : item
@@ -164,7 +183,14 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     comment: Omit<NewsComment, 'id' | 'createdAt'>
   ): Promise<boolean> => {
     try {
-      const { comment: newComment } = await commentsApi.add(newsId, comment.content);
+      const { comment: newComment } = await commentsApi.add(
+        newsId, 
+        comment.content,
+        comment.userName || comment.guestEmail ? {
+          userName: comment.userName,
+          guestEmail: comment.guestEmail,
+        } : undefined
+      );
       setNews((prev) =>
         prev.map((item) =>
           item.id === newsId
@@ -176,6 +202,8 @@ export function NewsProvider({ children }: { children: ReactNode }) {
                     id: newComment.id,
                     userId: newComment.userId,
                     userName: newComment.userName,
+                    userEmail: newComment.userEmail,
+                    guestEmail: newComment.guestEmail,
                     content: newComment.content,
                     createdAt: newComment.createdAt,
                   },
@@ -185,7 +213,8 @@ export function NewsProvider({ children }: { children: ReactNode }) {
         )
       );
       return true;
-    } catch {
+    } catch (err) {
+      console.error('[NewsContext] addComment error:', err);
       return false;
     }
   };
@@ -209,6 +238,22 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const incrementNewsView = async (newsId: string): Promise<void> => {
+    try {
+      const response = await newsApi.incrementView(newsId);
+      if (response.success) {
+        setNews((prev) =>
+          prev.map((item) =>
+            item.id === newsId ? { ...item, views: response.views } : item
+          )
+        );
+      }
+    } catch (err) {
+      console.error('[NewsContext] incrementNewsView error:', err);
+      // Silently fail - not critical for user experience
+    }
+  };
+
   return (
     <NewsContext.Provider
       value={{
@@ -225,6 +270,7 @@ export function NewsProvider({ children }: { children: ReactNode }) {
         setReaction,
         addComment,
         deleteComment,
+        incrementNewsView,
         refreshNews,
       }}
     >

@@ -4,12 +4,17 @@ import { ArrowRight, MessageCircle, Shield, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSiteContent } from '@/context/SiteContentContext';
 import { Ad } from '@/components/Ad';
+import { useNews } from '@/context/NewsContext';
+import { FeaturedNews, NewsItem } from '@/pages/News';
 
 export function Home() {
   const { homeContent } = useSiteContent();
   const { canAccessAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { publishedNews } = useNews();
+  const featuredNews = publishedNews[0];
+  const recentNews = publishedNews.slice(1, 4);
 
   useEffect(() => {
     if (!location.hash) {
@@ -28,6 +33,7 @@ export function Home() {
 
   const handleAdminEditMedia = (mediaId: string) => {
     if (!canAccessAdmin) {
+      navigate('/berita');
       return;
     }
 
@@ -38,7 +44,7 @@ export function Home() {
     <div className="min-h-screen overflow-x-hidden bg-white dark:bg-gray-950">
       <section
         id="hero"
-        className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-900 pb-10 pt-20"
+        className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-gray-950 via-black to-gray-900 pb-10 pt-40"
       >
         <div className="absolute inset-0 opacity-30">
           <div className="absolute right-10 top-32 h-96 w-96 animate-blob rounded-full bg-[#d90429] blur-3xl" />
@@ -55,16 +61,16 @@ export function Home() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.05)_1px,transparent_1px)] bg-[length:100px_100px] opacity-20" />
 
         <div className="relative z-10 max-w-7xl px-4 text-center text-white">
-          <div className="mb-8 space-y-0 leading-none">
-            <h1 className="text-7xl font-black tracking-tighter md:text-8xl lg:text-9xl">
+          <div className="mb-8 space-y-2 leading-[1.15]">
+            <h1 className="text-4xl font-black tracking-tighter sm:text-5xl md:text-7xl lg:text-9xl">
               <span
-                className="block animate-slideInUp text-white"
+                className="block animate-slideInUp py-2 text-white"
                 style={{ animationDelay: '0.1s' }}
               >
                 DIGITAL
               </span>
               <span
-                className="block animate-slideInUp bg-gradient-to-r from-[#d90429] via-[#ef233c] to-red-500 bg-clip-text font-black text-transparent drop-shadow"
+                className="block animate-slideInUp pb-4 pt-2 -mb-2 bg-gradient-to-r from-[#d90429] via-[#ef233c] to-red-500 bg-clip-text font-black text-transparent"
                 style={{ animationDelay: '0.2s' }}
               >
                 INDEPENDEN
@@ -72,16 +78,16 @@ export function Home() {
             </h1>
           </div>
 
-          <div className="mb-12 space-y-0 leading-none">
-            <h2 className="text-6xl font-black tracking-tighter md:text-7xl lg:text-8xl">
+          <div className="mb-12 space-y-2 leading-[1.15]">
+            <h2 className="text-3xl font-black tracking-tighter sm:text-4xl md:text-6xl lg:text-8xl">
               <span
-                className="block animate-slideInUp text-white"
+                className="block animate-slideInUp py-2 text-white"
                 style={{ animationDelay: '0.3s' }}
               >
                 MEMPERJUANGKAN
               </span>
               <span
-                className="block animate-slideInUp bg-gradient-to-r from-orange-400 via-red-500 to-[#d90429] bg-clip-text font-black text-transparent"
+                className="block animate-slideInUp pb-4 pt-2 -mb-2 bg-gradient-to-r from-orange-400 via-red-500 to-[#d90429] bg-clip-text font-black text-transparent"
                 style={{ animationDelay: '0.4s' }}
               >
                 KEADILAN
@@ -90,7 +96,7 @@ export function Home() {
           </div>
 
           <p
-            className="mx-auto mb-12 max-w-3xl animate-fadeIn text-lg font-light leading-relaxed text-gray-300 md:text-xl"
+            className="mx-auto mb-12 max-w-3xl animate-fadeIn px-2 text-base font-light leading-relaxed text-gray-300 sm:text-lg md:text-xl"
             style={{ animationDelay: '0.6s' }}
           >
             Sinergi Muda Strategis adalah kanal berita digital independen yang menghadirkan
@@ -149,6 +155,44 @@ export function Home() {
 
       <Ad position="header" />
 
+      {featuredNews && (
+        <section className="relative bg-gray-50 py-24 dark:bg-gray-900">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mb-16 flex flex-col items-center justify-between gap-4 md:flex-row">
+              <div>
+                <span className="text-sm font-bold uppercase tracking-widest text-[#d90429]">
+                  Kabar Terbaru
+                </span>
+                <h2 className="mt-2 text-3xl font-black text-gray-900 dark:text-white sm:text-4xl md:text-5xl">
+                  Berita <span className="text-[#d90429]">Terkini</span>
+                </h2>
+              </div>
+              <Link
+                to="/berita"
+                className="group flex items-center gap-2 rounded-full border-2 border-[#d90429] px-6 py-2 font-bold text-[#d90429] transition-all hover:bg-[#d90429] hover:text-white"
+              >
+                Lihat Semua Berita
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+
+            {featuredNews && (
+              <div className="mb-10">
+                <FeaturedNews news={featuredNews} />
+              </div>
+            )}
+
+            {recentNews.length > 0 && (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {recentNews.map((news) => (
+                  <NewsItem key={news.id} news={news} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       <section id="about" className="relative bg-white py-24 dark:bg-gray-900">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid items-center gap-12 md:grid-cols-2">
@@ -158,7 +202,7 @@ export function Home() {
                   {homeContent.aboutBadge}
                 </span>
               </div>
-              <h2 className="mb-6 text-5xl font-black text-gray-900 dark:text-white md:text-6xl">
+              <h2 className="mb-6 text-3xl font-black text-gray-900 dark:text-white sm:text-4xl md:text-5xl lg:text-6xl">
                 {homeContent.aboutTitle}
               </h2>
               <p className="mb-6 text-lg leading-relaxed text-gray-700 dark:text-gray-300">
@@ -174,52 +218,92 @@ export function Home() {
 
             <div className="group relative">
               <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#d90429] to-[#ef233c] opacity-30 blur-xl transition duration-300 group-hover:opacity-100" />
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 p-8 dark:from-gray-800 dark:to-gray-900">
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 p-6 dark:from-gray-800 dark:to-gray-900">
                 <div className="space-y-4">
-                  <div className="rounded-lg bg-[#d90429]/20 py-6 text-center font-bold text-[#d90429]">
+                  <div className="rounded-lg bg-[#d90429]/20 py-5 text-center font-bold text-[#d90429]">
                     <div className="text-lg">{homeContent.activitiesTitle}</div>
                     <p className="mt-2 px-4 text-sm font-medium text-gray-600 dark:text-gray-300">
                       {homeContent.activitiesDescription}
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {homeContent.activitiesMedia.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => handleAdminEditMedia(item.id)}
-                        className={`overflow-hidden rounded-lg bg-white text-left shadow-sm dark:bg-gray-900 ${
-                          canAccessAdmin
-                            ? 'group/media transition-all hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#d90429]'
-                            : 'cursor-default'
-                        }`}
-                      >
-                        {item.type === 'video' ? (
-                          <iframe
-                            src={item.src}
-                            title={item.title}
-                            className="h-36 w-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          />
-                        ) : (
-                          <img src={item.src} alt={item.title} className="h-36 w-full object-cover" />
-                        )}
-                        <div className="p-3">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {item.title}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            {item.description}
-                          </p>
-                          {canAccessAdmin && (
-                            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#d90429]">
-                              Klik untuk edit
+
+                  {publishedNews.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {publishedNews.slice(0, 4).map((item) => (
+                        <Link
+                          key={item.id}
+                          to={`/berita/${item.id}`}
+                          className="group/card overflow-hidden rounded-lg bg-white text-left shadow-sm dark:bg-gray-900 transition-all hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#d90429]"
+                        >
+                          <div className="relative h-32 overflow-hidden">
+                            <img
+                              src={item.image || '/images/hero-bg.jpg'}
+                              alt={item.title}
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                            <span className="absolute bottom-2 left-2 rounded-full bg-[#d90429] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                              {item.category}
+                            </span>
+                          </div>
+                          <div className="p-3">
+                            <p className="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 dark:text-white group-hover/card:text-[#d90429] transition-colors">
+                              {item.title}
                             </p>
+                            <p className="mt-1 line-clamp-2 text-xs text-gray-500 dark:text-gray-400">
+                              {item.excerpt}
+                            </p>
+                            <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#d90429]">
+                              Baca →
+                            </span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {homeContent.activitiesMedia.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleAdminEditMedia(item.id)}
+                          className="group/media overflow-hidden rounded-lg bg-white text-left shadow-sm dark:bg-gray-900 transition-all hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#d90429]"
+                        >
+                          {item.type === 'video' ? (
+                            <iframe
+                              src={item.src}
+                              title={item.title}
+                              className="h-36 w-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            />
+                          ) : (
+                            <img src={item.src} alt={item.title} className="h-36 w-full object-cover" />
                           )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                          <div className="p-3">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {item.title}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                              {item.description}
+                            </p>
+                            {canAccessAdmin && (
+                              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#d90429]">
+                                Klik untuk edit
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <Link
+                    to="/berita"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#d90429] py-2.5 text-sm font-bold text-white transition-all hover:bg-[#b30220]"
+                  >
+                    Lihat Semua Berita
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
               </div>
             </div>
@@ -236,7 +320,7 @@ export function Home() {
             <span className="text-sm font-bold uppercase tracking-widest text-[#d90429]">
               Panduan Kami
             </span>
-            <h2 className="mt-2 text-5xl font-black text-gray-900 dark:text-white md:text-6xl">
+            <h2 className="mt-2 text-3xl font-black text-gray-900 dark:text-white sm:text-4xl md:text-5xl lg:text-6xl">
               Visi <span className="text-[#d90429]">&</span> Misi
             </h2>
           </div>
@@ -295,7 +379,7 @@ export function Home() {
             <span className="text-sm font-bold uppercase tracking-widest text-[#d90429]">
               Fondasi Kami
             </span>
-            <h2 className="mt-2 text-5xl font-black text-gray-900 dark:text-white md:text-6xl">
+            <h2 className="mt-2 text-3xl font-black text-gray-900 dark:text-white sm:text-4xl md:text-5xl lg:text-6xl">
               <span className="text-[#d90429]">Empat Pilar</span> Keunggulan
             </h2>
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
@@ -355,6 +439,7 @@ export function Home() {
           </div>
         </div>
       </section>
+
 
       <section
         id="contact"

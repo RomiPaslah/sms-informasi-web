@@ -48,15 +48,18 @@ $db->query("CREATE TABLE IF NOT EXISTS news (
     content LONGTEXT NOT NULL,
     excerpt TEXT,
     image LONGTEXT,
+    video_url LONGTEXT,
     category VARCHAR(100),
     author VARCHAR(100),
     author_id INT,
+    views INT NOT NULL DEFAULT 0,
     published TINYINT(1) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_published (published),
     INDEX idx_category (category),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    INDEX idx_views (views)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 $results[] = 'Tabel news: ' . ($db->error ?: 'OK');
 
@@ -66,20 +69,25 @@ $db->query("CREATE TABLE IF NOT EXISTS comments (
     news_id VARCHAR(36) NOT NULL,
     user_id INT,
     user_name VARCHAR(100) NOT NULL,
+    user_email VARCHAR(191),
+    guest_email VARCHAR(191),
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_news_id (news_id)
+    INDEX idx_news_id (news_id),
+    INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 $results[] = 'Tabel comments: ' . ($db->error ?: 'OK');
 
-// Reactions table
+// Reactions table (untuk registered users dan guests)
 $db->query("CREATE TABLE IF NOT EXISTS reactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     news_id VARCHAR(36) NOT NULL,
-    user_id VARCHAR(100) NOT NULL,
+    user_id VARCHAR(100),
+    guest_id VARCHAR(100),
     emoji VARCHAR(10),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY unique_reaction (news_id, user_id),
+    UNIQUE KEY unique_guest_reaction (news_id, guest_id),
     INDEX idx_news_id (news_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 $results[] = 'Tabel reactions: ' . ($db->error ?: 'OK');
@@ -163,11 +171,26 @@ $checkContent->close();
 // Default ad settings
 $defaultAds = json_encode([
     'enabled'           => false,
-    'adType'            => 'adsense',
-    'adsensePublisherId'=> '',
-    'customAdHtml'      => '',
-    'adPositions'       => ['header' => false, 'sidebar' => false, 'footer' => false, 'betweenContent' => false],
-]);
+    'ads'               => [
+        [
+            'id'         => 'ad-1',
+            'title'      => 'Iklan Contoh',
+            'description' => 'Deskripsi singkat iklan',
+            'image'      => '/images/hero-bg.jpg',
+            'link'       => 'https://example.com',
+            'positions'  => ['betweenContent'],
+            'enabled'    => true,
+            'width'      => 300,
+            'height'     => 250,
+        ],
+    ],
+    'positions'  => [
+        'header'         => ['enabled' => false, 'width' => '100%', 'maxHeight' => 120],
+        'sidebar'        => ['enabled' => false, 'width' => 300, 'maxHeight' => 600],
+        'betweenContent' => ['enabled' => false, 'width' => 300, 'maxHeight' => 250],
+        'footer'         => ['enabled' => false, 'width' => '100%', 'maxHeight' => 200],
+    ],
+], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 $checkAds = $db->prepare("SELECT id FROM site_content WHERE content_key = 'ad_settings'");
 $checkAds->execute();
 if ($checkAds->get_result()->num_rows === 0) {
@@ -176,6 +199,8 @@ if ($checkAds->get_result()->num_rows === 0) {
     $insertAds->execute();
     $insertAds->close();
     $results[] = 'Pengaturan iklan default berhasil dibuat';
+} else {
+    $results[] = 'Pengaturan iklan sudah ada';
 }
 $checkAds->close();
 

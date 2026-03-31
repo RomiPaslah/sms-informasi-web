@@ -7,6 +7,7 @@
 @layer base {
   html, body {
     background-color: #ffffff;
+    --navbar-height: 96px; /* navbar (~68px) + ticker (28px) */
   }
   
   :root {
@@ -88,6 +89,13 @@
   
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Poppins', sans-serif;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* Prevent any element from causing horizontal scroll on mobile */
+  img, video, iframe, table {
+    max-width: 100%;
   }
 }
 
@@ -340,4 +348,10 @@
 
 .dark ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-500;
+}
+
+/* Market Ticker Scroll Animation */
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }

@@ -36,7 +36,7 @@ import { useSiteContent } from '@/context/SiteContentContext';
 import { authApi } from '@/lib/api';
 import type { HomeContent, NewsComment, User } from '@/types';
 
-type AdminTab = 'news' | 'users' | 'homepage' | 'comments' | 'ads';
+type AdminTab = 'news' | 'users' | 'homepage' | 'comments' | 'ads' | 'ai';
 
 const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
 
@@ -555,6 +555,9 @@ export function AdminDashboard() {
           <TabButton active={activeTab === 'ads'} onClick={() => switchTab('ads')} icon={<Monitor className="h-4 w-4" />}>
             Pengaturan Iklan
           </TabButton>
+          <TabButton active={activeTab === 'ai'} onClick={() => switchTab('ai')} icon={<Sparkles className="h-4 w-4" />}>
+            AI Auto-Berita
+          </TabButton>
         </div>
 
         {activeTab === 'news' && (
@@ -648,6 +651,8 @@ export function AdminDashboard() {
             </div>
           </>
         )}
+
+        {activeTab === 'ai' && <AiNewsPanel />}
 
         {activeTab === 'users' && (
           <section className="space-y-6">
@@ -1391,146 +1396,277 @@ export function AdminDashboard() {
 
         {activeTab === 'ads' && (
           <section className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
-            <div className="border-b border-gray-200 pb-4 dark:border-gray-700">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pengaturan Iklan</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Kelola iklan Google AdSense dan iklan kustom untuk menghasilkan pendapatan.
-              </p>
+            <div className="border-b border-gray-200 pb-4 dark:border-gray-700 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Kelola Iklan</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Tambahkan dan kelola iklan dengan gambar, deskripsi, dan posisi fleksibel.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const newAd = {
+                    id: `ad_${Date.now()}`,
+                    title: 'Iklan Baru',
+                    description: '',
+                    image: '',
+                    link: '',
+                    enabled: true,
+                    width: '300px',
+                    height: '250px',
+                    positions: ['header']
+                  };
+                  setAdForm(prev => ({
+                    ...prev,
+                    ads: [...(prev.ads || []), newAd]
+                  }));
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#d90429] px-4 py-2 text-sm text-white font-medium hover:bg-[#ef233c] transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Tambah Iklan
+              </button>
             </div>
 
             <div className="mt-6 space-y-6">
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={adForm.enabled}
-                    onChange={(e) => setAdForm(prev => ({ ...prev, enabled: e.target.checked }))}
-                    className="w-5 h-5 text-[#d90429] focus:ring-[#d90429] border-gray-300 rounded"
-                  />
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Aktifkan Iklan</span>
-                </label>
+              {/* Ads List */}
+              <div className="space-y-4">
+                {adForm.ads && adForm.ads.length > 0 ? (
+                  adForm.ads.map((ad, idx) => (
+                    <div key={ad.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={ad.title}
+                            onChange={(e) => setAdForm(prev => ({
+                              ...prev,
+                              ads: prev.ads?.map((a, i) => i === idx ? { ...a, title: e.target.value } : a) || []
+                            }))}
+                            placeholder="Judul Iklan"
+                            className="w-full font-medium text-gray-900 dark:text-white bg-transparent border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-0 focus:border-[#d90429] mb-2"
+                          />
+                          <input
+                            type="text"
+                            value={ad.description}
+                            onChange={(e) => setAdForm(prev => ({
+                              ...prev,
+                              ads: prev.ads?.map((a, i) => i === idx ? { ...a, description: e.target.value } : a) || []
+                            }))}
+                            placeholder="Deskripsi singkat iklan"
+                            className="w-full text-sm text-gray-600 dark:text-gray-400 bg-transparent border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-0 focus:border-[#d90429]"
+                          />
+                        </div>
+                        <button
+                          onClick={() => setAdForm(prev => ({
+                            ...prev,
+                            ads: prev.ads?.filter((_, i) => i !== idx) || []
+                          }))}
+                          className="text-red-600 hover:text-red-700 dark:text-red-400 p-2"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            URL Gambar
+                          </label>
+                          <input
+                            type="text"
+                            value={ad.image}
+                            onChange={(e) => setAdForm(prev => ({
+                              ...prev,
+                              ads: prev.ads?.map((a, i) => i === idx ? { ...a, image: e.target.value } : a) || []
+                            }))}
+                            placeholder="https://example.com/image.jpg"
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            URL Tautan (Link)
+                          </label>
+                          <input
+                            type="text"
+                            value={ad.link}
+                            onChange={(e) => setAdForm(prev => ({
+                              ...prev,
+                              ads: prev.ads?.map((a, i) => i === idx ? { ...a, link: e.target.value } : a) || []
+                            }))}
+                            placeholder="https://example.com"
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Lebar
+                          </label>
+                          <input
+                            type="text"
+                            value={ad.width}
+                            onChange={(e) => setAdForm(prev => ({
+                              ...prev,
+                              ads: prev.ads?.map((a, i) => i === idx ? { ...a, width: e.target.value } : a) || []
+                            }))}
+                            placeholder="300px"
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Tinggi
+                          </label>
+                          <input
+                            type="text"
+                            value={ad.height}
+                            onChange={(e) => setAdForm(prev => ({
+                              ...prev,
+                              ads: prev.ads?.map((a, i) => i === idx ? { ...a, height: e.target.value } : a) || []
+                            }))}
+                            placeholder="250px"
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="flex items-center gap-3 cursor-pointer mb-3">
+                          <input
+                            type="checkbox"
+                            checked={ad.enabled}
+                            onChange={(e) => setAdForm(prev => ({
+                              ...prev,
+                              ads: prev.ads?.map((a, i) => i === idx ? { ...a, enabled: e.target.checked } : a) || []
+                            }))}
+                            className="w-4 h-4 text-[#d90429] focus:ring-[#d90429] border-gray-300 rounded"
+                          />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">Aktifkan Iklan</span>
+                        </label>
+
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Tampilkan di Posisi
+                        </label>
+                        <div className="flex flex-wrap gap-3">
+                          {['header', 'sidebar', 'betweenContent', 'footer'].map(pos => (
+                            <label key={pos} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={ad.positions?.includes(pos) || false}
+                                onChange={(e) => setAdForm(prev => ({
+                                  ...prev,
+                                  ads: prev.ads?.map((a, i) => 
+                                    i === idx 
+                                      ? { 
+                                          ...a, 
+                                          positions: e.target.checked
+                                            ? [...(a.positions || []), pos]
+                                            : (a.positions || []).filter(p => p !== pos)
+                                        }
+                                      : a
+                                  ) || []
+                                }))}
+                                className="w-4 h-4 text-[#d90429] focus:ring-[#d90429] border-gray-300 rounded"
+                              />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                {pos === 'header' ? 'Header' : pos === 'sidebar' ? 'Sidebar' : pos === 'betweenContent' ? 'Antara Konten' : 'Footer'}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <p>Belum ada iklan. Klik tombol "Tambah Iklan" untuk membuat yang baru.</p>
+                  </div>
+                )}
               </div>
 
-              {adForm.enabled && (
-                <>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Tipe Iklan
-                      </label>
-                      <div className="flex gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="adType"
-                            value="adsense"
-                            checked={adForm.adType === 'adsense'}
-                            onChange={(e) => setAdForm(prev => ({ ...prev, adType: e.target.value as 'adsense' | 'custom' }))}
-                            className="text-[#d90429] focus:ring-[#d90429]"
-                          />
-                          <span className="text-sm text-gray-900 dark:text-white">Google AdSense</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="adType"
-                            value="custom"
-                            checked={adForm.adType === 'custom'}
-                            onChange={(e) => setAdForm(prev => ({ ...prev, adType: e.target.value as 'adsense' | 'custom' }))}
-                            className="text-[#d90429] focus:ring-[#d90429]"
-                          />
-                          <span className="text-sm text-gray-900 dark:text-white">Iklan Kustom</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {adForm.adType === 'adsense' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Publisher ID AdSense
-                        </label>
+              {/* Position Settings */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-4">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white">Pengaturan Posisi</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(adForm.positions || {}).map(([pos, settings]) => (
+                    <div key={pos} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <label className="flex items-center gap-2 cursor-pointer mb-3">
                         <input
-                          type="text"
-                          value={adForm.adsensePublisherId || ''}
-                          onChange={(e) => setAdForm(prev => ({ ...prev, adsensePublisherId: e.target.value }))}
-                          placeholder="ca-pub-XXXXXXXXXXXXXXXX"
-                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                          type="checkbox"
+                          checked={settings.enabled}
+                          onChange={(e) => setAdForm(prev => ({
+                            ...prev,
+                            positions: {
+                              ...prev.positions,
+                              [pos]: { ...settings, enabled: e.target.checked }
+                            }
+                          }))}
+                          className="w-4 h-4 text-[#d90429] focus:ring-[#d90429] border-gray-300 rounded"
                         />
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Masukkan Publisher ID dari Google AdSense Anda (contoh: ca-pub-1234567890123456)
-                        </p>
-                      </div>
-                    )}
-
-                    {adForm.adType === 'custom' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          HTML Iklan Kustom
-                        </label>
-                        <textarea
-                          rows={6}
-                          value={adForm.customAdHtml || ''}
-                          onChange={(e) => setAdForm(prev => ({ ...prev, customAdHtml: e.target.value }))}
-                          placeholder="<div>Iklan Anda di sini</div>"
-                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white font-mono text-sm"
-                        />
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Masukkan HTML iklan kustom Anda. Pastikan aman dan tidak mengandung script berbahaya.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Posisi Iklan
+                        <span className="font-medium text-gray-900 dark:text-white capitalize">
+                          {pos === 'header' ? 'Header' : pos === 'sidebar' ? 'Sidebar' : pos === 'betweenContent' ? 'Antara Konten' : 'Footer'}
+                        </span>
                       </label>
-                      <div className="grid grid-cols-2 gap-4">
-                        {[
-                          { key: 'header', label: 'Header' },
-                          { key: 'sidebar', label: 'Sidebar' },
-                          { key: 'footer', label: 'Footer' },
-                          { key: 'betweenContent', label: 'Antara Konten' },
-                        ].map(({ key, label }) => (
-                          <label key={key} className="flex items-center gap-3 cursor-pointer">
+                      
+                      {settings.enabled && (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-xs text-gray-600 dark:text-gray-400">Lebar Posisi</label>
                             <input
-                              type="checkbox"
-                              checked={adForm.adPositions[key as keyof typeof adForm.adPositions]}
+                              type="text"
+                              value={settings.width}
                               onChange={(e) => setAdForm(prev => ({
                                 ...prev,
-                                adPositions: {
-                                  ...prev.adPositions,
-                                  [key]: e.target.checked
+                                positions: {
+                                  ...prev.positions,
+                                  [pos]: { ...settings, width: e.target.value }
                                 }
                               }))}
-                              className="w-4 h-4 text-[#d90429] focus:ring-[#d90429] border-gray-300 rounded"
+                              className="w-full rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                             />
-                            <span className="text-sm text-gray-900 dark:text-white">{label}</span>
-                          </label>
-                        ))}
-                      </div>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-600 dark:text-gray-400">Tinggi Maksimal</label>
+                            <input
+                              type="text"
+                              value={settings.maxHeight}
+                              onChange={(e) => setAdForm(prev => ({
+                                ...prev,
+                                positions: {
+                                  ...prev.positions,
+                                  [pos]: { ...settings, maxHeight: e.target.value }
+                                }
+                              }))}
+                              className="w-full rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#d90429] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
 
-                  <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button
-                      onClick={() => {
-                        updateAdSettings(adForm);
-                        setSaveMessage('Pengaturan iklan berhasil disimpan!');
-                        setTimeout(() => setSaveMessage(''), 3000);
-                      }}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#d90429] px-6 py-3 text-white font-medium hover:bg-[#ef233c] transition-colors"
-                    >
-                      <Save className="h-4 w-4" />
-                      Simpan Pengaturan
-                    </button>
-                    {saveMessage && (
-                      <span className="text-sm text-green-600 dark:text-green-400">{saveMessage}</span>
-                    )}
-                  </div>
-                </>
-              )}
+              <div className="flex items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => {
+                    updateAdSettings(adForm);
+                    setSaveMessage('Pengaturan iklan berhasil disimpan!');
+                    setTimeout(() => setSaveMessage(''), 3000);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#d90429] px-6 py-3 text-white font-medium hover:bg-[#ef233c] transition-colors"
+                >
+                  <Save className="h-4 w-4" />
+                  Simpan Pengaturan
+                </button>
+                {saveMessage && (
+                  <span className="text-sm text-green-600 dark:text-green-400">{saveMessage}</span>
+                )}
+              </div>
             </div>
           </section>
         )}
@@ -1668,5 +1804,167 @@ function CommentCard({
         </div>
       </div>
     </article>
+  );
+}
+
+// ── AI Auto-Berita Panel ──────────────────────────────────────────────────────
+
+function AiNewsPanel() {
+  const [isRunning, setIsRunning] = useState(false);
+  const [log, setLog] = useState<string[]>([]);
+  const [secretKey, setSecretKey] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
+
+  const apiBase = window.location.origin + '/api';
+
+  const handleRun = async () => {
+    if (!secretKey.trim()) {
+      setLog(['❌ Masukkan Secret Key terlebih dahulu.']);
+      return;
+    }
+    setIsRunning(true);
+    setLog(['🤖 Menghubungi AI generator...']);
+    try {
+      const res = await fetch(`${apiBase}/auto_news.php?secret=${encodeURIComponent(secretKey)}`, {
+        method: 'GET',
+      });
+      const text = await res.text();
+      if (res.ok) {
+        setLog(['✅ Selesai! Cek tab Kelola Berita untuk melihat artikel baru.', '', '📋 Log dari server:', ...text.split('\n').filter(Boolean)]);
+      } else {
+        setLog([`❌ Server merespons ${res.status}:`, text.slice(0, 300)]);
+      }
+    } catch (err: unknown) {
+      setLog([`❌ Gagal terhubung ke server: ${err instanceof Error ? err.message : String(err)}`]);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  return (
+    <section className="space-y-6">
+      {/* Header */}
+      <div className="rounded-2xl bg-gradient-to-br from-[#d90429] to-[#ef233c] p-6 text-white shadow-lg">
+        <div className="flex items-center gap-3 mb-2">
+          <Sparkles className="w-7 h-7" />
+          <h2 className="text-2xl font-black">AI Auto-Berita</h2>
+        </div>
+        <p className="text-white/80 text-sm max-w-2xl">
+          Buat artikel berita secara otomatis menggunakan kecerdasan buatan (Google Gemini AI).
+          Sistem ini dapat dijadwalkan berjalan 2x sehari via Cron Job cPanel, atau dipicu secara manual dari sini.
+        </p>
+      </div>
+
+      {/* Setup Instructions */}
+      <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm p-6 space-y-4">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <Settings className="w-5 h-5 text-[#d90429]" />
+          Langkah Pengaturan
+        </h3>
+
+        <div className="space-y-3">
+          <Step number={1} title="Dapatkan Google Gemini API Key">
+            <p>Kunjungi <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[#d90429] underline">aistudio.google.com/app/apikey</a> dan buat API key gratis.</p>
+          </Step>
+
+          <Step number={2} title="Edit file auto_news.php">
+            <p>Buka <code className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-sm font-mono">public_html/api/auto_news.php</code> dan ganti:</p>
+            <pre className="mt-2 bg-gray-100 dark:bg-gray-900 rounded-lg p-3 text-xs font-mono overflow-x-auto">
+{`define('GEMINI_API_KEY', 'GANTI_DENGAN_API_KEY_GEMINI_ANDA');
+define('AUTO_NEWS_SECRET', 'buat-kode-rahasia-unik-anda');`}
+            </pre>
+          </Step>
+
+          <Step number={3} title="Setting Cron Job di cPanel">
+            <p>Masuk ke cPanel → <strong>Cron Jobs</strong> → tambahkan 2 jadwal:</p>
+            <pre className="mt-2 bg-gray-100 dark:bg-gray-900 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+{`# Pagi pukul 06:00 WIB
+0 23 * * * php /home/AKUN/public_html/api/auto_news.php >> /home/AKUN/logs/autonews.log 2>&1
+
+# Sore pukul 18:00 WIB  
+0 11 * * * php /home/AKUN/public_html/api/auto_news.php >> /home/AKUN/logs/autonews.log 2>&1`}
+            </pre>
+            <p className="text-xs text-gray-500 mt-1">* Ganti <code>AKUN</code> dengan nama akun cPanel Anda (contoh: sinw8647)</p>
+          </Step>
+
+          <Step number={4} title="Uji manual dari sini">
+            <p>Masukkan secret key yang sudah Anda tentukan di atas, lalu klik tombol Generate.</p>
+          </Step>
+        </div>
+      </div>
+
+      {/* Manual Trigger */}
+      <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-sm p-6 space-y-4">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-[#d90429]" />
+          Generate Berita Sekarang
+        </h3>
+
+        <div className="flex gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[220px]">
+            <input
+              type={showSecret ? 'text' : 'password'}
+              value={secretKey}
+              onChange={(e) => setSecretKey(e.target.value)}
+              placeholder="Masukkan Secret Key dari auto_news.php"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => setShowSecret(!showSecret)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <button
+            onClick={handleRun}
+            disabled={isRunning}
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#d90429] text-white rounded-xl font-semibold hover:bg-[#ef233c] transition disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isRunning ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Sedang Generate...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Generate Sekarang
+              </>
+            )}
+          </button>
+        </div>
+
+        {log.length > 0 && (
+          <div className="bg-gray-950 rounded-xl p-4 font-mono text-xs text-green-400 max-h-64 overflow-y-auto space-y-1">
+            {log.map((line, i) => (
+              <div key={i}>{line || <br />}</div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-800 dark:text-amber-300">
+        <strong>⚠️ Catatan Penting:</strong> Artikel yang di-generate AI akan langsung dipublikasikan.
+        Disarankan untuk meninjau dan mengedit gambar berita secara manual di tab <em>Kelola Berita</em>.
+        Gemini API versi gratis memiliki batas 60 request/menit.
+      </div>
+    </section>
+  );
+}
+
+function Step({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-900/50">
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#d90429] text-white text-sm font-black flex items-center justify-center">
+        {number}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-gray-900 dark:text-white mb-1">{title}</p>
+        <div className="text-sm text-gray-600 dark:text-gray-400">{children}</div>
+      </div>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Send, Share2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -16,6 +16,20 @@ export function NewsEngagement({ news, showCommentsLink = true }: NewsEngagement
   const { user } = useAuth();
   const { setReaction } = useNews();
   const [shareOpen, setShareOpen] = useState(false);
+  const [guestId, setGuestId] = useState<string>('');
+
+  // Generate or get guest ID from localStorage
+  useEffect(() => {
+    const generateGuestId = () => {
+      let stored = localStorage.getItem('sms_guest_id');
+      if (!stored) {
+        stored = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('sms_guest_id', stored);
+      }
+      setGuestId(stored);
+    };
+    generateGuestId();
+  }, []);
 
   const reactionCounts = useMemo(() => {
     return Object.values(news.reactions).reduce<Record<string, number>>((acc, emoji) => {
@@ -34,11 +48,12 @@ export function NewsEngagement({ news, showCommentsLink = true }: NewsEngagement
       : `/berita/${news.id}`;
 
   const handleReaction = (emoji: string) => {
-    if (!user) {
+    const reactorId = user ? user.id : guestId;
+    if (!reactorId) {
       return;
     }
 
-    setReaction(news.id, user.id, emoji);
+    setReaction(news.id, reactorId, emoji, !user ? guestId : undefined);
   };
 
   const handleShare = async (type: 'native' | 'copy' | 'whatsapp') => {
@@ -64,7 +79,8 @@ export function NewsEngagement({ news, showCommentsLink = true }: NewsEngagement
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         {REACTIONS.map((emoji) => {
-          const active = user && news.reactions[user.id] === emoji;
+          const currentId = user ? user.id : guestId;
+          const active = currentId && news.reactions[currentId] === emoji;
           return (
             <button
               key={emoji}
@@ -133,12 +149,6 @@ export function NewsEngagement({ news, showCommentsLink = true }: NewsEngagement
             </div>
           )}
         </div>
-
-        {!user && (
-          <Link to="/login" className="text-[#d90429] hover:text-[#ef233c]">
-            Login untuk memberi reaksi
-          </Link>
-        )}
       </div>
     </div>
   );

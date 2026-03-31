@@ -4,6 +4,7 @@ import { Menu, Moon, Sun, User, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useSiteContent } from '@/context/SiteContentContext';
+import { MarketTicker } from '@/components/MarketTicker';
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -64,8 +65,8 @@ export function Navbar() {
   const isDark = isScrolled || !isHomePage;
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isDark ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg py-3' : 'bg-transparent py-5'}`}>
-      <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-20">
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 flex flex-col ${isDark ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg' : 'bg-transparent'}`}>
+      <div className={`w-full px-4 sm:px-6 lg:px-12 xl:px-20 transition-all duration-500 ${isDark ? 'py-3' : 'py-5'}`}>
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
             <img src="/images/sms-logo.png" alt="SMS Logo" className={`h-10 w-auto transition-all duration-300 group-hover:scale-105 ${isDark ? '' : 'brightness-0 invert'}`} />
@@ -204,6 +205,7 @@ export function Navbar() {
           </div>
         </div>
       </div>
+      <MarketTicker />
     </nav>
   );
 }

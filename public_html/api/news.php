@@ -9,6 +9,7 @@
  *   PUT    /api/news.php?id=X         — Update berita (admin/editor only)
  *   DELETE /api/news.php?id=X         — Hapus berita (admin only)
  *   POST   /api/news.php?action=toggle_publish&id=X — Toggle publish status (admin only)
+ *   POST   /api/news.php?action=increment_view&id=X — Increment view count
  */
 
 require_once 'config.php';
@@ -19,6 +20,10 @@ $action = $_GET['action'] ?? '';
 
 if ($action === 'toggle_publish' && $method === 'POST') {
     handleTogglePublish($id);
+}
+
+if ($action === 'increment_view' && $method === 'POST') {
+    handleIncrementView($id);
 }
 
 switch ($method) {
@@ -53,8 +58,10 @@ function formatNews(array $row, array $comments = [], array $reactions = []): ar
         'content'   => $row['content'],
         'excerpt'   => $row['excerpt'] ?? '',
         'image'     => $row['image'] ?? '',
+        'video_url' => $row['video_url'] ?? '',
         'category'  => $row['category'] ?? 'Lainnya',
         'author'    => $row['author'] ?? 'Admin SMS',
+        'views'     => (int)($row['views'] ?? 0),
         'published' => (bool)$row['published'],
         'createdAt' => $row['created_at'],
         'updatedAt' => $row['updated_at'],
@@ -65,7 +72,7 @@ function formatNews(array $row, array $comments = [], array $reactions = []): ar
 
 function getNewsComments(mysqli $db, string $newsId): array {
     $stmt = $db->prepare(
-        'SELECT id, user_id, user_name, content, created_at FROM comments 
+        'SELECT id, user_id, user_name, user_email, guest_email, content, created_at FROM comments 
          WHERE news_id = ? ORDER BY created_at ASC'
     );
     $stmt->bind_param('s', $newsId);
@@ -73,26 +80,44 @@ function getNewsComments(mysqli $db, string $newsId): array {
     $result = $stmt->get_result();
     $comments = [];
     while ($row = $result->fetch_assoc()) {
-        $comments[] = [
+        $comment = [
             'id'        => $row['id'],
-            'userId'    => (string)$row['user_id'],
             'userName'  => $row['user_name'],
             'content'   => $row['content'],
             'createdAt' => $row['created_at'],
         ];
+        
+        // Add userId jika user yang login
+        if ($row['user_id']) {
+            $comment['userId'] = (string)$row['user_id'];
+            if ($row['user_email']) {
+                $comment['userEmail'] = $row['user_email'];
+            }
+        }
+        
+        // Add guestEmail jika guest comment
+        if ($row['guest_email']) {
+            $comment['guestEmail'] = $row['guest_email'];
+        }
+        
+        $comments[] = $comment;
     }
     $stmt->close();
     return $comments;
 }
 
 function getNewsReactions(mysqli $db, string $newsId): array {
-    $stmt = $db->prepare('SELECT user_id, emoji FROM reactions WHERE news_id = ?');
+    $stmt = $db->prepare('SELECT user_id, guest_id, emoji FROM reactions WHERE news_id = ?');
     $stmt->bind_param('s', $newsId);
     $stmt->execute();
     $result    = $stmt->get_result();
     $reactions = [];
     while ($row = $result->fetch_assoc()) {
-        $reactions[$row['user_id']] = $row['emoji'];
+        // Prioritas: user_id jika ada, kalau tidak user guest_id
+        $key = $row['user_id'] ?? $row['guest_id'];
+        if ($key) {
+            $reactions[$key] = $row['emoji'];
+        }
     }
     $stmt->close();
     return $reactions;
@@ -106,13 +131,13 @@ function handleGetList(): void {
     $db          = getDB();
 
     if ($isAdmin) {
-        $result = $db->query(
-            'SELECT id, title, content, excerpt, image, category, author, published, created_at, updated_at 
+        $result = $db->query(views, published, created_at, updated_at 
              FROM news ORDER BY created_at DESC'
         );
     } else {
         $result = $db->query(
-            'SELECT id, title, content, excerpt, image, category, author, published, created_at, updated_at 
+            'SELECT id, title, content, excerpt, image, video_url, category, author, views
+            'SELECT id, title, content, excerpt, image, video_url, category, author, published, created_at, updated_at 
              FROM news WHERE published = 1 ORDER BY created_at DESC'
         );
     }
@@ -148,7 +173,7 @@ function handleGetList(): void {
 function handleGetSingle(string $id): void {
     $db   = getDB();
     $stmt = $db->prepare(
-        'SELECT id, title, content, excerpt, image, category, author, published, created_at, updated_at 
+        'SELECT id, title, content, excerpt, image, video_url, category, author, views, published, created_at, updated_at 
          FROM news WHERE id = ? LIMIT 1'
     );
     $stmt->bind_param('s', $id);
@@ -184,6 +209,7 @@ function handleCreate(): void {
     $content  = trim($input['content'] ?? '');
     $excerpt  = trim($input['excerpt'] ?? '');
     $image    = trim($input['image'] ?? '');
+    $video_url = trim($input['video_url'] ?? '');
     $category = trim($input['category'] ?? 'Lainnya');
     $published = isset($input['published']) ? (int)(bool)$input['published'] : 0;
 
@@ -195,13 +221,13 @@ function handleCreate(): void {
     $db = getDB();
 
     $stmt = $db->prepare(
-        'INSERT INTO news (id, title, content, excerpt, image, category, author, author_id, published) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO news (id, title, content, excerpt, image, video_url, category, author, author_id, published) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $authorId = (int)$currentUser['id'];
     $stmt->bind_param(
-        'sssssssii',
-        $id, $title, $content, $excerpt, $image, $category,
+        'ssssssssii',
+        $id, $title, $content, $excerpt, $image, $video_url, $category,
         $currentUser['name'], $authorId, $published
     );
     $stmt->execute();
@@ -243,6 +269,7 @@ function handleUpdate(string $id): void {
     if (isset($input['title']))     { $fields[] = 'title = ?';     $types .= 's'; $values[] = trim($input['title']); }
     if (isset($input['content']))   { $fields[] = 'content = ?';   $types .= 's'; $values[] = trim($input['content']); }
     if (isset($input['excerpt']))   { $fields[] = 'excerpt = ?';   $types .= 's'; $values[] = trim($input['excerpt']); }
+    if (isset($input['video_url'])) { $fields[] = 'video_url = ?'; $types .= 's'; $values[] = trim($input['video_url']); }
     if (isset($input['image']))     { $fields[] = 'image = ?';     $types .= 's'; $values[] = trim($input['image']); }
     if (isset($input['category']))  { $fields[] = 'category = ?';  $types .= 's'; $values[] = trim($input['category']); }
     if (isset($input['published'])) { $fields[] = 'published = ?'; $types .= 'i'; $values[] = (int)(bool)$input['published']; }
@@ -321,4 +348,31 @@ function handleTogglePublish(string $id): void {
     $db->close();
 
     sendJSON(['success' => true, 'published' => (bool)$newPublished]);
+}
+
+function handleIncrementView(string $id): void {
+    if (!$id) sendJSON(['error' => 'ID berita diperlukan'], 400);
+
+    $db = getDB();
+    
+    // Increment views
+    $stmt = $db->prepare('UPDATE news SET views = views + 1 WHERE id = ?');
+    $stmt->bind_param('s', $id);
+    $stmt->execute();
+    $stmt->close();
+
+    // Get updated view count
+    $fetchStmt = $db->prepare('SELECT views FROM news WHERE id = ? LIMIT 1');
+    $fetchStmt->bind_param('s', $id);
+    $fetchStmt->execute();
+    $row = $fetchStmt->get_result()->fetch_assoc();
+    $fetchStmt->close();
+    $db->close();
+
+    if (!$row) {
+        sendJSON(['error' => 'Berita tidak ditemukan'], 404);
+    }
+
+    sendJSON(['success' => true, 'views' => (int)$row['views']]);
+}
 }

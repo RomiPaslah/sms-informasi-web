@@ -120,6 +120,18 @@ function getCurrentUser(): ?array
 }
 
 /**
+ * Get current logged-in user, throws exception if not authenticated
+ */
+function getAuthUser(): array
+{
+    $user = getCurrentUser();
+    if (!$user) {
+        throw new Exception('User not authenticated');
+    }
+    return $user;
+}
+
+/**
  * Require authentication and return user
  */
 function requireAuth(): array

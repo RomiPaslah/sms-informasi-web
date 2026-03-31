@@ -44,18 +44,11 @@ export function News() {
   const featuredNews = filteredNews[0];
   const regularNews = filteredNews.slice(1);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <section className="bg-gradient-to-br from-[#d90429] to-[#ef233c] py-16 lg:py-24">
+      <section className="bg-gradient-to-br from-[#d90429] to-[#ef233c] pt-32 pb-16 lg:pt-40 lg:pb-24">
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-20 text-center">
           <div className={`transition-all duration-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
             <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-2 mb-6">
@@ -105,37 +98,7 @@ export function News() {
         {featuredNews && !searchQuery && selectedCategory === 'all' && (
           <div className="mb-12">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Berita Utama</h2>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl">
-              <div className="grid lg:grid-cols-2">
-                <div className="relative h-64 lg:h-auto">
-                  <img src={featuredNews.image || '/images/hero-bg.jpg'} alt={featuredNews.title} className="w-full h-full object-cover" />
-                </div>
-                <div className="p-8 lg:p-12 flex flex-col justify-center">
-                  <span className="inline-block w-fit px-3 py-1 bg-[#d90429]/10 dark:bg-[#d90429]/20 text-[#d90429] text-xs font-semibold rounded-full mb-4">
-                    {featuredNews.category}
-                  </span>
-                  <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-4 hover:text-[#d90429] transition-colors">
-                    <Link to={`/berita/${featuredNews.id}`}>{featuredNews.title}</Link>
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-6 line-clamp-3">{featuredNews.excerpt}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
-                    <span className="flex items-center gap-1">
-                      <User className="w-4 h-4" />
-                      {featuredNews.author}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {formatDate(featuredNews.createdAt)}
-                    </span>
-                  </div>
-                  <NewsEngagement news={featuredNews} />
-                  <Link to={`/berita/${featuredNews.id}`} className="mt-6 inline-flex items-center gap-2 text-[#d90429] font-medium hover:gap-3 transition-all">
-                    Baca Selengkapnya
-                    <span>{'->'}</span>
-                  </Link>
-                </div>
-              </div>
-            </div>
+            <FeaturedNews news={featuredNews} />
           </div>
         )}
 
@@ -167,7 +130,52 @@ export function News() {
   );
 }
 
-function NewsItem({ news }: { news: News }) {
+export function FeaturedNews({ news }: { news: News }) {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl">
+      <div className="grid lg:grid-cols-2">
+        <div className="relative h-64 lg:h-auto">
+          <img src={news.image || '/images/hero-bg.jpg'} alt={news.title} className="w-full h-full object-cover" />
+        </div>
+        <div className="p-8 lg:p-12 flex flex-col justify-center">
+          <span className="inline-block w-fit px-3 py-1 bg-[#d90429]/10 dark:bg-[#d90429]/20 text-[#d90429] text-xs font-semibold rounded-full mb-4">
+            {news.category}
+          </span>
+          <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-4 hover:text-[#d90429] transition-colors">
+            <Link to={`/berita/${news.id}`}>{news.title}</Link>
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6 line-clamp-3">{news.excerpt}</p>
+          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
+            <span className="flex items-center gap-1">
+              <User className="w-4 h-4" />
+              {news.author}
+            </span>
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              {formatDate(news.createdAt)}
+            </span>
+          </div>
+          <NewsEngagement news={news} />
+          <Link to={`/berita/${news.id}`} className="mt-6 inline-flex items-center gap-2 text-[#d90429] font-medium hover:gap-3 transition-all">
+            Baca Selengkapnya
+            <span>{'->'}</span>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function NewsItem({ news }: { news: News }) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', {

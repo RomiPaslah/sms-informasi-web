@@ -113,8 +113,10 @@ export const authApi = {
 
 export interface ApiComment {
   id: string;
-  userId: string;
+  userId?: string;
   userName: string;
+  userEmail?: string;
+  guestEmail?: string;
   content: string;
   createdAt: string;
 }
@@ -125,8 +127,10 @@ export interface ApiNews {
   content: string;
   excerpt: string;
   image: string;
+  video_url?: string;
   category: string;
   author: string;
+  views: number;
   published: boolean;
   createdAt: string;
   updatedAt: string;
@@ -140,6 +144,7 @@ export interface NewsFormPayload {
   content: string;
   excerpt: string;
   image: string;
+  video_url?: string;
   category: string;
   published: boolean;
 }
@@ -150,6 +155,11 @@ export const newsApi = {
 
   getById: (id: string) =>
     apiFetch<{ news: ApiNews }>(`/news.php?id=${encodeURIComponent(id)}`),
+
+  incrementView: (id: string) =>
+    apiFetch<{ success: boolean; views: number }>(`/news.php?action=increment_view&id=${encodeURIComponent(id)}`, {
+      method: 'POST',
+    }),
 
   create: (data: NewsFormPayload) =>
     apiFetch<{ success: boolean; news: ApiNews }>('/news.php', {
@@ -177,26 +187,44 @@ export const newsApi = {
 
 // ── Comments ──────────────────────────────────────────────────────────────────
 
+export interface CommentPayload {
+  newsId: string;
+  content: string;
+  userName?: string;
+  guestEmail?: string;
+}
+
 export const commentsApi = {
-  add: (newsId: string, content: string) =>
+  add: (newsId: string, content: string, payload?: Omit<CommentPayload, 'newsId' | 'content'>) =>
     apiFetch<{ success: boolean; comment: ApiComment }>('/comments.php', {
       method: 'POST',
-      body: JSON.stringify({ newsId, content }),
+      body: JSON.stringify({ 
+        newsId, 
+        content,
+        ...(payload?.userName && { userName: payload.userName }),
+        ...(payload?.guestEmail && { guestEmail: payload.guestEmail }),
+      }),
     }),
 
-  delete: (commentId: string) =>
+  delete: (commentId: string, guestEmail?: string) =>
     apiFetch<{ success: boolean }>(`/comments.php?id=${encodeURIComponent(commentId)}`, {
       method: 'DELETE',
+      body: guestEmail ? JSON.stringify({ guestEmail }) : undefined,
     }),
 };
 
 // ── Reactions ─────────────────────────────────────────────────────────────────
 
 export const reactionsApi = {
-  toggle: (newsId: string, emoji: string) =>
+  toggle: (newsId: string, emoji: string, payload?: any) =>
     apiFetch<{ success: boolean; emoji: string }>('/reactions.php', {
       method: 'POST',
-      body: JSON.stringify({ newsId, emoji }),
+      body: JSON.stringify({ 
+        newsId, 
+        emoji,
+        ...(payload?.guestId && { guestId: payload.guestId }),
+        ...(payload?.userId && { userId: payload.userId }),
+      }),
     }),
 };
 
